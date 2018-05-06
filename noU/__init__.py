@@ -50,7 +50,7 @@ class info(ts3plugin):
             if (targetMode == 1): #private msg
                 ts3.requestSendPrivateTextMsg(schid, msg, fromID, "")
             if (targetMode == 2): #channel msg
-                ts3.requestSendChannelTestMsg(schid, msg, 0, "")
+                ts3.requestSendChannelTextMsg(schid, msg, 0, "")
         except:
             from traceback import format_exc;ts3.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "PyTSon", 0)
 
