@@ -8,7 +8,7 @@ class info(ts3plugin):
     requestAutoload = True
     version = "1.0"
     author = "Exp"
-    description = "Disconnect via /py disconnect"
+    description = "Disconnect via /py dc"
     offersConfigure = False
     commandKeyword = "dc"
     infoTitle = None
@@ -22,5 +22,5 @@ class info(ts3plugin):
        
     def processCommand(self, schid, command):
         ts3.printMessageToCurrentTab("Disconnecting")
-        ts3.stopConnection(schid, "Disconnected via Pytson Script")
+        ts3.stopConnection(schid, command if command else "Disconnected via Pytson Script")
         return True
