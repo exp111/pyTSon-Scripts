@@ -92,7 +92,8 @@ class autoMove(ts3plugin):
             if newChannelID in self.sourceChannel:
                 if len(self.destinationChannel) > 0:
                     destChannel = self.destinationChannel[0] #TODO: Check which channel is best
-                    ts3lib.requestClientMove(serverConnectionHandlerID, clientID, destChannel, "", "") #TODO: Maybe get password?
+                    (err, path, password) = ts3lib.getChannelConnectInfo(serverConnectionHandlerID, destChannel)
+                    ts3lib.requestClientMove(serverConnectionHandlerID, clientID, destChannel, password)
                 else:
                     ts3lib.printMessageToCurrentTab("No Destination Channel availabe.")
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
