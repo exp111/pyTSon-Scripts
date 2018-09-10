@@ -124,7 +124,7 @@ class Channel(object):
                                                    ts3defines.ChannelProperties.CHANNEL_NAME)
         if err != ts3defines.ERROR_ok:
             _errprint("Error getting channel name", err, self.schid, self.cid)
-            return "ERROR_GETTING_NAME: %s" % err
+            return "ERROR_GETTING_NAME: {}".fomrat(err)
         else:
             self.cache["name"] = n
             return n
@@ -516,7 +516,7 @@ class Client(object):
                                                   ts3defines.ClientProperties.CLIENT_NICKNAME)
         if err != ts3defines.ERROR_ok:
             _errprint("Error getting client name", err, self.schid, self.clid)
-            return "ERROR_GETTING_NICKNAME: %s" % err
+            return "ERROR_GETTING_NICKNAME: {}".format(err)
         else:
             self.cache["name"] = n
             return n
@@ -530,7 +530,7 @@ class Client(object):
         if err != ts3defines.ERROR_ok:
             _errprint("Error getting client displayname", err, self.schid,
                       self.clid)
-            return "ERROR_GETTING_DISPLAYNAME: %s" % err
+            return "ERROR_GETTING_DISPLAYNAME: {}".format(err)
         else:
             self.cache["displayName"] = n
             return n
@@ -825,7 +825,7 @@ class Client(object):
                                                   ts3defines.ClientPropertiesRare.CLIENT_BADGES)
         if err != ts3defines.ERROR_ok:
             _errprint("Error getting client badges", err, self.schid, self.clid)
-            return "ERROR_GETTING_BADGES: %s" % err
+            return "ERROR_GETTING_BADGES: {}".format(err)
         else:
             self.cache["badges"] = b
             return b
@@ -839,7 +839,7 @@ class Client(object):
                                                   ts3defines.ClientProperties.CLIENT_UNIQUE_IDENTIFIER)
         if err != ts3defines.ERROR_ok:
             _errprint("Error getting client unique id", err, self.schid, self.clid)
-            return "ERROR_GETTING_UNIQUEID: %s" % err
+            return "ERROR_GETTING_UNIQUEID: {}".format(err)
         else:
             self.cache["uid"] = uid
             return uid
@@ -1415,7 +1415,7 @@ class ServerviewModel(QAbstractItemModel):
         if role == Qt.DisplayRole:
             if type(obj) is Client:
                 if obj.isRecording:
-                    return "*** %s *** [RECORDING]" % obj.displayName
+                    return "*** {} *** [RECORDING]".format(obj.displayName)
                 else:
                     return obj.displayName
             return obj.name
