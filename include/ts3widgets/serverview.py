@@ -1,3 +1,4 @@
+import os
 from . import _errprint
 
 from ts3plugin import PluginHost
@@ -9,9 +10,10 @@ import ts3client
 
 import re
 
-from PythonQt.QtCore import Qt, QAbstractItemModel, QModelIndex
+from PythonQt.QtCore import Qt, QAbstractItemModel, QModelIndex, QFile, QByteArray, QIODevice, QDataStream, QUrl
 from PythonQt.QtGui import (QStyledItemDelegate, QStyle, QFontMetrics,
                             QApplication, QIcon, QColor, QTreeView)
+from PythonQt.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 
 class ServerViewRoles:
@@ -870,6 +872,104 @@ def getContacts():
     del db
     return ret
 
+def parseBadgesBlob(blob: QByteArray):
+    ret = {}
+    next = 12
+    guid_len = 0;guid = ""
+    name_len = 0;name = ""
+    url_len = 0;url = ""
+    filename = ""
+    desc_len = 0;desc = ""
+    for i in range(0, blob.size()):
+        try:
+            if i == next: #guid_len
+                guid_len = int(blob.at(i))
+                guid = str(blob.mid(i+1, guid_len))
+            elif i == (next + 1 + guid_len + 1):
+                name_len = int(blob.at(i))
+                name = str(blob.mid(i+1, name_len))
+            elif i == (next + 1 + guid_len + 1 + name_len + 2):
+                url_len = int(blob.at(i))
+                url = str(blob.mid(i+1, url_len))
+                filename = url.rsplit('/', 1)[1]
+            elif i == (next + 1 + guid_len + 1 + name_len + 2 + url_len + 2):
+                desc_len = int(blob.at(i))
+                desc = str(blob.mid(i+1, desc_len))
+                ret[guid] = {"name": name, "url": url, "filename": filename, "description": desc}
+                next = (next + guid_len + 2 + name_len + 2 + url_len + 2 + desc_len + 13)
+            delimiter = blob.mid(0, 12)
+        except:
+            ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
+            pass
+    return ret, blob
+
+
+def loadBadges():
+    """
+    Loads Badges from ts3settings.db
+    :return: int(timestamp), str(ret), dict(badges)
+    """
+    db = ts3client.Config()
+    q = db.query("SELECT * FROM Badges") #  WHERE key = BadgesListData
+    timestamp = 0
+    ret = {}
+    badges = QByteArray()
+    while q.next():
+        key = q.value("key")
+        if key == "BadgesListTimestamp":
+            timestamp = q.value("value")
+        elif key == "BadgesListData":
+            ret, badges = parseBadgesBlob(q.value("value"))
+    del db
+    return timestamp, ret, badges
+
+def parseBadges(client_badges):
+    """
+    Parses a string of badges.
+    :param client_badges:
+    :return: tuple(overwolf, dict(badges))
+    """
+    overwolf = None
+    badges = []
+    if "verwolf=" in client_badges and "badges=" in client_badges:
+        client_badges = client_badges.split(":",1)
+        overwolf = bool(int(client_badges[0].split("=",1)[1]))
+        badges = client_badges[1].split("=",1)[1].replace(":badges=", ",").split(",")
+    elif "verwolf=" in client_badges:
+        overwolf = bool(int(client_badges.split("=")[1]))
+    elif "badges=" in client_badges:
+        badges = client_badges.split("=",1)[1].replace(":badges=", ",").split(",")
+    return overwolf, badges
+
+class network(object):
+    nwmc = QNetworkAccessManager()
+    def getFile(self, url):
+        """
+        :param url:
+        """
+        self.nwmc.connect("finished(QNetworkReply*)", self._getFileReply)
+        self.nwmc.get(QNetworkRequest(QUrl(url)))
+    def _getFileReply(self, reply):
+        del self.nwmc
+
+    def downloadFile(self, url, path):
+        """
+        :param url:
+        :param path:
+        """
+        self.nwmc.connect("finished(QNetworkReply*)", self._downloadFileReply)
+        dlpath = path
+        self.nwmc.get(QNetworkRequest(QUrl(url)))
+    def _downloadFileReply(self, reply):
+        del self.nwmc #TODO: save to file
+        """
+        QByteArray b = reply->readAll();
+        fil = QFile(dlpath);
+        fil.open(QIODevice.WriteOnly);
+        out QDataStream(fil);
+        out << b;
+        """
+
 class ServerviewModel(QAbstractItemModel):
     """
     ItemModel to deliver data of a serverview to ItemWidgets. The data is
@@ -906,8 +1006,12 @@ class ServerviewModel(QAbstractItemModel):
 
         self.tabWidget = [item for item in QApplication.allWidgets() if item.objectName == "qt_tabwidget_stackedwidget"][0]
         #TODO: read badges from settings.db
+        self.badgePath = os.path.join(ts3lib.getConfigPath(), "cache", "badges")
+        self.badges = loadBadges()[1]
         #read friends/foes from settings.db
         self.contacts = getContacts()
+
+        self.network = network()
 
         try:
             self.icons = ts3client.ServerCache(self.schid)
@@ -1314,7 +1418,6 @@ class ServerviewModel(QAbstractItemModel):
                     return "*** %s *** [RECORDING]" % obj.displayName
                 else:
                     return obj.displayName
-
             return obj.name
         elif role == ServerViewRoles.isspacer:
             return type(obj) is Channel and obj.isSpacer
@@ -1339,9 +1442,17 @@ class ServerviewModel(QAbstractItemModel):
                 if obj.iconID != 0:
                     ret.append(QIcon(self.icons.icon(obj.iconID)))
             elif type(obj) is Client:
-                #TODO: badges
-                #parseBadges(obj.badges)
-                ret.append(QIcon("D:/Programme/TeamSpeak/config/plugins/TS3Hook/icons/4netplayers.png"))
+                try:
+                    #TODO: badges
+                    overwolf, badges = parseBadges(obj.badges)
+                    for badge in badges:
+                        filePath = "{}.svg".format(os.path.join(self.badgePath, self.badges[badge]['filename']))
+                        if not os.path.exists(filePath):
+                            #download
+                            self.network.downloadFile("{}.svg".format(self.badges[badge]['url']), filePath)
+                        ret.append(QIcon(filePath))
+                except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
+
                 # priority speaker
                 if obj.isPrioritySpeaker:
                     ret.append(QIcon(self.iconpack.icon("CAPTURE")))
@@ -1364,6 +1475,9 @@ class ServerviewModel(QAbstractItemModel):
                 # talkrequest
                 if obj.isRequestingTalkPower:
                     ret.append(QIcon(self.iconpack.icon("REQUEST_TALK_POWER")))
+                # overwolf
+                #if overwolf == 1:
+                    #ret.append()
                 # flag
                 if obj.country != "":
                     ret.append(QIcon(self.countries.flag(obj.country)))
