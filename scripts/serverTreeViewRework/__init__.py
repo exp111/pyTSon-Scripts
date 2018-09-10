@@ -5,9 +5,10 @@ from ts3plugin import ts3plugin
 import ts3lib, ts3defines
 from ts3widgets.serverview import ServerviewModel, ServerviewDelegate, Client, Channel
 
+from PythonQt import BoolResult
 from PythonQt.QtGui import (QApplication, QDialog, QAbstractItemView,
                             QTreeView, QHBoxLayout, QItemSelection,
-                            QItemSelectionModel, QTextDocument)
+                            QItemSelectionModel, QTextDocument, QWidget, QInputDialog, QLineEdit)
 from PythonQt.QtCore import Qt, QEvent, QTimer, QMimeData, QModelIndex
 from PythonQt.pytson import EventFilterObject
 
@@ -150,17 +151,16 @@ class DragDropServerviewModel(ServerviewModel):
 
         return False
 
-def inputBox(title, text, default=""):
+def inputBox(parent, title, text, default=""):
     """
     :param default:
     :param title:
     :param text:
     :return:
     """
-    x = QWidget()
+    x = QWidget(parent)
     x.setAttribute(Qt.WA_DeleteOnClose)
     ok = BoolResult()
-    if not default: default = QApplication.clipboard().text()
     text = QInputDialog.getText(x, title, text, QLineEdit.Normal, default, ok) # QDir.Home.dirName()
     if ok: return text
     else: return False
@@ -284,7 +284,7 @@ class DragDropServerview(QTreeView):
                     if err != ts3defines.ERROR_ok:
                         return
                     if not pw:
-                        pw = inputBox("Enter Channel Password", "Password:")
+                        pw = inputBox(self, "Enter Channel Password", "Password:")
                     ts3lib.requestClientMove(self.schid, clid, item.cid, pw)
             #elif itemType == ts3defines.PluginItemType.PLUGIN_SERVER:
                 #do nothing i guess?

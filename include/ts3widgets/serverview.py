@@ -865,6 +865,7 @@ class ServerviewModel(QAbstractItemModel):
 
         self.tabWidget = [item for item in QApplication.allWidgets() if item.objectName == "qt_tabwidget_stackedwidget"][0]
         #TODO: read badges from settings.db
+        #TODO: read friends/foes from settings.db
 
         try:
             self.icons = ts3client.ServerCache(self.schid)
