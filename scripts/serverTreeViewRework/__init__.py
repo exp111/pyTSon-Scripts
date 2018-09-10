@@ -354,12 +354,12 @@ class serverTreeViewRework(ts3plugin):
     version = "1.0.1"
     apiVersion = 21
     author = "bluscream, exp111, Thomas \"PLuS\" Pathmann"
-    description = "A new ServerTree. Build on MultiSelectMove"
+    description = "A new ServerTree. Build on MultiSelectMove."
     offersConfigure = False
     commandKeyword = ""
     infoTitle = ""
-    menuItems = [(ts3defines.PluginMenuType.PLUGIN_MENU_TYPE_GLOBAL, 0, "MultiSelectMove", os.path.join("ressources", "octicons", "git-pull-request.svg.png"))]
-    hotkeys = [("0", "Show Multiselect window")]
+    menuItems = [(ts3defines.PluginMenuType.PLUGIN_MENU_TYPE_GLOBAL, 0, "ToggleServerTreeView", os.path.join("ressources", "octicons", "git-pull-request.svg.png"))]
+    hotkeys = [("0", "Toggle ServerTreeView")]
 
     def __init__(self):
         self.svobserver = EventFilterObject([QEvent.ChildAdded])

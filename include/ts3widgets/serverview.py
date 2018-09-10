@@ -864,6 +864,7 @@ class ServerviewModel(QAbstractItemModel):
         self._reload()
 
         self.tabWidget = [item for item in QApplication.allWidgets() if item.objectName == "qt_tabwidget_stackedwidget"][0]
+        #TODO: read badges from settings.db
 
         try:
             self.icons = ts3client.ServerCache(self.schid)
@@ -1289,7 +1290,8 @@ class ServerviewModel(QAbstractItemModel):
                 if obj.iconID != 0:
                     ret.append(QIcon(self.icons.icon(obj.iconID)))
             elif type(obj) is Client:
-                # badges
+                #TODO: badges
+                #parseBadges(obj.badges)
                 ret.append(QIcon("D:/Programme/TeamSpeak/config/plugins/TS3Hook/icons/4netplayers.png"))
                 # priority speaker
                 if obj.isPrioritySpeaker:
@@ -1299,11 +1301,11 @@ class ServerviewModel(QAbstractItemModel):
                     ret.append(QIcon(self.iconpack.icon("IS_TALKER")))
                 elif obj.talkPower < obj.parentNode.neededTalkPower:
                     ret.append(QIcon(self.iconpack.icon("INPUT_MUTED")))
-                # channelgroup
+                #FIXME: channelgroup
                 if obj.channelGroup in self.cgicons:
                     ret.append(QIcon(self.icons.icon(
                         self.cgicons[obj.channelGroup])))
-                # servergroups
+                #FIXME: servergroups
                 for sg in obj.serverGroups:
                     if sg in self.sgicons:
                         ret.append(QIcon(self.icons.icon(self.sgicons[sg])))
