@@ -1443,13 +1443,17 @@ class ServerviewModel(QAbstractItemModel):
                     ret.append(QIcon(self.icons.icon(obj.iconID)))
             elif type(obj) is Client:
                 try:
-                    #TODO: badges
+                    #badges
+                    #TODO: external badges
                     overwolf, badges = parseBadges(obj.badges)
-                    for badge in badges:
-                        filePath = "{}.svg".format(os.path.join(self.badgePath, self.badges[badge]['filename']))
+                    for badgeUuid in badges:
+                        badge = self.badges[badgeUuid]
+                        if not badge:
+                            continue
+                        filePath = "{}.svg".format(os.path.join(self.badgePath, badge['filename']))
                         if not os.path.exists(filePath):
                             #download
-                            self.network.downloadFile("{}.svg".format(self.badges[badge]['url']), filePath)
+                            self.network.downloadFile("{}.svg".format(badge['url']), filePath)
                         ret.append(QIcon(filePath))
                 except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
@@ -1475,7 +1479,7 @@ class ServerviewModel(QAbstractItemModel):
                 # talkrequest
                 if obj.isRequestingTalkPower:
                     ret.append(QIcon(self.iconpack.icon("REQUEST_TALK_POWER")))
-                # overwolf
+                #TODO: overwolf
                 #if overwolf == 1:
                     #ret.append()
                 # flag
