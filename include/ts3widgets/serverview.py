@@ -827,7 +827,48 @@ class Client(object):
         else:
             self.cache["badges"] = b
             return b
+    
+    @property
+    def uid(self):
+        if "uid" in self.cache:
+            return self.cache["uid"]
 
+        err, uid = ts3lib.getClientVariableAsString(self.schid, self.clid,
+                                                  ts3defines.ClientProperties.CLIENT_UNIQUE_IDENTIFIER)
+        if err != ts3defines.ERROR_ok:
+            _errprint("Error getting client unique id", err, self.schid, self.clid)
+            return "ERROR_GETTING_UNIQUEID: %s" % err
+        else:
+            self.cache["uid"] = uid
+            return uid
+
+def getContacts():
+    """
+    :return:
+    """
+    db = ts3client.Config()
+    ret = []
+    q = db.query("SELECT * FROM contacts")
+    while q.next():
+        try:
+            cur = {"Key": int(q.value("key")), "Timestamp": q.value("timestamp")}
+            val = q.value("value")
+            for l in val.split('\n'):
+                try:
+                    l = l.split('=', 1)
+                    if len(l) != 2: continue
+                    if l[0] in ["Nickname","PhoneticNickname","LastSeenServerName"]: cur[l[0]] = l[1].encode('ascii', 'ignore')
+                    elif l[0] in ["LastSeenServerAddress","IDS","VolumeModifier", "LastSeen"]: cur[l[0]] = l[1]
+                    elif l[0] in ["Friend","NickShowType"]: cur[l[0]] = int(l[1])
+                    elif l[0] in ["Automute","IgnorePublicMessages","IgnorePrivateMessages","IgnorePokes","IgnoreAvatar","IgnoreAwayMessage","HaveVolumeModifier","WhisperAllow"]:
+                        if l[1] == "false": cur[l[0]] = False
+                        elif l[1] == "true": cur[l[0]] = True
+                    if l[0] == "LastSeen" and l[1]: cur["LastSeenEpoch"] = int(time.mktime(time.strptime(l[1], '%Y-%m-%dT%H:%M:%S')))
+                except: continue
+            ret.append(cur)
+        except: continue
+    del db
+    return ret
 
 class ServerviewModel(QAbstractItemModel):
     """
@@ -865,7 +906,8 @@ class ServerviewModel(QAbstractItemModel):
 
         self.tabWidget = [item for item in QApplication.allWidgets() if item.objectName == "qt_tabwidget_stackedwidget"][0]
         #TODO: read badges from settings.db
-        #TODO: read friends/foes from settings.db
+        #read friends/foes from settings.db
+        self.contacts = getContacts()
 
         try:
             self.icons = ts3client.ServerCache(self.schid)
@@ -1257,6 +1299,12 @@ class ServerviewModel(QAbstractItemModel):
     def columnCount(self, parent):
         return 1
 
+    def isFriend(self, id):
+        return any(contact["IDS"] == id and contact["Friend"] == 0 for contact in self.contacts)
+
+    def isBlocked(self, id):
+        return any(contact["IDS"] == id and contact["Friend"] == 1 for contact in self.contacts)
+
     def data(self, index, role):
         obj = self._indexObject(index)
 
@@ -1334,6 +1382,10 @@ class ServerviewModel(QAbstractItemModel):
             if type(obj) is Client:
                 if obj.isRecording:
                     return QColor(Qt.darkRed)
+                if self.isFriend(obj.uid):
+                    return QColor(Qt.green)
+                if self.isBlocked(obj.uid):
+                    return QColor(Qt.red)
 
         return None
 

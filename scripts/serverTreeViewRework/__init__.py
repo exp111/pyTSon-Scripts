@@ -265,7 +265,9 @@ class DragDropServerview(QTreeView):
                 treeView = self.parent()
                 serverView = treeView.parent()
                 #TODO: find better way to select or better way to open chat #set the original tree view index to our current
+                #found = BoolResult()
                 treeView.onSearchItemByName(item.name, QTextDocument.FindCaseSensitively | QTextDocument.FindWholeWords, True, False, True)
+                #if found:
                 serverView.onOpenChatRequest() #onOpenChatRequest(anyID) is useless (prolly called from action menu; opens chat tab for selected client)
             elif itemType == ts3defines.PluginItemType.PLUGIN_CHANNEL:
                 #join channel
