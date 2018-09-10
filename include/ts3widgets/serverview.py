@@ -481,6 +481,7 @@ class Client(object):
         self.isme = isme
         self.parentNode = None
         self._isTalking = False
+        self._isWhispering = False
 
         self.update()
 
@@ -587,6 +588,14 @@ class Client(object):
     @isTalking.setter
     def isTalking(self, val):
         self._isTalking = val
+
+    @property
+    def isWhispering(self):
+        return self._isWhispering
+
+    @isWhispering.setter
+    def isWhispering(self, val):
+        self._isWhispering = val
 
     @property
     def iconID(self):
@@ -805,6 +814,10 @@ class Client(object):
         if self.inputMuted:
             return "INPUT_MUTED"
 
+        #TODO: Add isWhispering
+        if self.isWhispering:
+            return "PLAYER_WHISPER"
+
         if self.isChannelCommander:
             if self.isTalking:
                 return "PLAYER_COMMANDER_ON"
@@ -970,11 +983,24 @@ class network(object):
         out << b;
         """
 
+def getOptions():
+    """
+    :return: dict(options)
+    """
+    db = ts3client.Config()
+    q = db.query("SELECT * FROM Application")
+    timestamp = 0
+    ret = {}
+    while q.next():
+        key = q.value("key")
+        ret[key] = q.value("value")
+    del db
+    return ret
+
 class ServerviewModel(QAbstractItemModel):
     """
     ItemModel to deliver data of a serverview to ItemWidgets. The data is
     delivered in one column.
-    Limitations: no badges, no friend/foe status
     """
 
     def __init__(self, schid, iconpack=None, parent=None):
@@ -1012,6 +1038,8 @@ class ServerviewModel(QAbstractItemModel):
         self.contacts = getContacts()
 
         self.network = network()
+        self.options = getOptions()
+        #TODO: handle self.options["SortClientsAfterChannels"] somewhere
 
         try:
             self.icons = ts3client.ServerCache(self.schid)
@@ -1340,10 +1368,19 @@ class ServerviewModel(QAbstractItemModel):
         if schid != self.schid:
             return
 
+        changed = False
         obj = self.allclients[clid]
         talks = status == ts3defines.TalkStatus.STATUS_TALKING
+        whispers = isReceivedWhisper == 1
+        
         if obj.isTalking != talks:
             obj.isTalking = talks
+            changed = True
+        if obj.isWhispering != whispers:
+            obj.isWhispering = whispers
+            changed = True
+
+        if changed:
             idx = self._createIndex(obj.rowOf(), 0, obj)
             self.dataChanged(idx, idx)
 
@@ -1412,7 +1449,7 @@ class ServerviewModel(QAbstractItemModel):
     def data(self, index, role):
         obj = self._indexObject(index)
 
-        if role == Qt.DisplayRole:
+        if role == Qt.DisplayRole: #TODO: handle afk messages (self.options["AwayMessageBesideNickName"])
             if type(obj) is Client:
                 if obj.isRecording:
                     return "*** {} *** [RECORDING]".format(obj.displayName)
@@ -1442,6 +1479,9 @@ class ServerviewModel(QAbstractItemModel):
                 if obj.iconID != 0:
                     ret.append(QIcon(self.icons.icon(obj.iconID)))
             elif type(obj) is Client:
+                #isWhisperTarget
+
+
                 try:
                     #badges
                     #TODO: external badges
@@ -1480,10 +1520,10 @@ class ServerviewModel(QAbstractItemModel):
                 if obj.isRequestingTalkPower:
                     ret.append(QIcon(self.iconpack.icon("REQUEST_TALK_POWER")))
                 #TODO: overwolf
-                #if overwolf == 1:
+                #if self.options["EnableOverwolfIcons"] == 1 and overwolf == 1:
                     #ret.append()
                 # flag
-                if obj.country != "":
+                if self.options["EnableCountryFlags"] == 1 and obj.country != "":
                     ret.append(QIcon(self.countries.flag(obj.country)))
             else:
                 assert type(obj) is Server
@@ -1552,9 +1592,9 @@ class ServerviewDelegate(QStyledItemDelegate):
             return
 
         if index.data(ServerViewRoles.isspacer):
-            painter.save()
+            #painter.save()
             self._paintSpacer(painter, option, index)
-            painter.restore()
+            #painter.restore()
             return
 
         icon = index.data(Qt.DecorationRole)
