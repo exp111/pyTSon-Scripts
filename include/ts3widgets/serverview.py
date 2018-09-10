@@ -650,7 +650,7 @@ class Client(object):
         if "awayMessage" in self.cache:
             return self.cache["awayMessage"]
 
-        err, a = ts3lib.getClientVariableAsInt(self.schid, self.clid,
+        err, a = ts3lib.getClientVariableAsString(self.schid, self.clid,
                                                ts3defines.ClientPropertiesRare.CLIENT_AWAY_MESSAGE)
         if err != ts3defines.ERROR_ok:
             _errprint("Error getting client away message flag", err, self.schid,
@@ -1004,7 +1004,6 @@ def getOptions():
     """
     db = ts3client.Config()
     q = db.query("SELECT * FROM Application")
-    timestamp = 0
     ret = {}
     while q.next():
         key = q.value("key")
@@ -1467,8 +1466,11 @@ class ServerviewModel(QAbstractItemModel):
 
         if role == Qt.DisplayRole:
             if type(obj) is Client:
-                if self.options["AwayMessageBesideNickName"] == 1 and obj.isAway:
+                if self.options["AwayMessageBesideNickName"] == "1" and obj.isAway:
+                    if not obj.awayMessage:
+                        return obj.displayName
                     return "{} [{}]".format(obj.displayName, obj.awayMessage)
+
                 if obj.isRecording:
                     return "*** {} *** [RECORDING]".format(obj.displayName)
                 else:
@@ -1538,10 +1540,10 @@ class ServerviewModel(QAbstractItemModel):
                 if obj.isRequestingTalkPower:
                     ret.append(QIcon(self.iconpack.icon("REQUEST_TALK_POWER")))
                 #TODO: overwolf
-                #if self.options["EnableOverwolfIcons"] == 1 and overwolf == 1:
+                #if self.options["EnableOverwolfIcons"] == "1" and overwolf == 1:
                     #ret.append()
                 # flag
-                if self.options["EnableCountryFlags"] == 1 and obj.country != "":
+                if self.options["EnableCountryFlags"] == "1" and obj.country != "":
                     ret.append(QIcon(self.countries.flag(obj.country)))
             else:
                 assert type(obj) is Server
