@@ -646,6 +646,21 @@ class Client(object):
             return a == 1
 
     @property
+    def awayMessage(self):
+        if "awayMessage" in self.cache:
+            return self.cache["awayMessage"]
+
+        err, a = ts3lib.getClientVariableAsInt(self.schid, self.clid,
+                                               ts3defines.ClientPropertiesRare.CLIENT_AWAY_MESSAGE)
+        if err != ts3defines.ERROR_ok:
+            _errprint("Error getting client away message flag", err, self.schid,
+                      self.clid)
+            return False
+        else:
+            self.cache["awayMessage"] = a
+            return a
+
+    @property
     def country(self):
         if "country" in self.cache:
             return self.cache["country"]
@@ -1031,7 +1046,7 @@ class ServerviewModel(QAbstractItemModel):
         self._reload()
 
         self.tabWidget = [item for item in QApplication.allWidgets() if item.objectName == "qt_tabwidget_stackedwidget"][0]
-        #TODO: read badges from settings.db
+        #read badges from settings.db
         self.badgePath = os.path.join(ts3lib.getConfigPath(), "cache", "badges")
         self.badges = loadBadges()[1]
         #read friends/foes from settings.db
@@ -1040,6 +1055,7 @@ class ServerviewModel(QAbstractItemModel):
         self.network = network()
         self.options = getOptions()
         #TODO: handle self.options["SortClientsAfterChannels"] somewhere
+        #TODO: show hovered items in another color
 
         try:
             self.icons = ts3client.ServerCache(self.schid)
@@ -1449,8 +1465,10 @@ class ServerviewModel(QAbstractItemModel):
     def data(self, index, role):
         obj = self._indexObject(index)
 
-        if role == Qt.DisplayRole: #TODO: handle afk messages (self.options["AwayMessageBesideNickName"])
+        if role == Qt.DisplayRole:
             if type(obj) is Client:
+                if self.options["AwayMessageBesideNickName"] == 1 and obj.isAway:
+                    return "{} [{}]".format(obj.displayName, obj.awayMessage)
                 if obj.isRecording:
                     return "*** {} *** [RECORDING]".format(obj.displayName)
                 else:
@@ -1479,8 +1497,8 @@ class ServerviewModel(QAbstractItemModel):
                 if obj.iconID != 0:
                     ret.append(QIcon(self.icons.icon(obj.iconID)))
             elif type(obj) is Client:
-                #isWhisperTarget
-
+                #TODO: isWhisperTarget
+                #ret.append(QIcon(self.iconpack.icon("ON_WHISPERLIST")))
 
                 try:
                     #badges
