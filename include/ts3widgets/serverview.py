@@ -813,6 +813,20 @@ class Client(object):
             return "PLAYER_ON"
         else:
             return "PLAYER_OFF"
+    
+    @property
+    def badges(self):
+        if "badges" in self.cache:
+            return self.cache["badges"]
+
+        err, b = ts3lib.getClientVariableAsString(self.schid, self.clid,
+                                                  ts3defines.ClientPropertiesRare.CLIENT_BADGES)
+        if err != ts3defines.ERROR_ok:
+            _errprint("Error getting client badges", err, self.schid, self.clid)
+            return "ERROR_GETTING_BADGES: %s" % err
+        else:
+            self.cache["badges"] = b
+            return b
 
 
 class ServerviewModel(QAbstractItemModel):
@@ -848,6 +862,8 @@ class ServerviewModel(QAbstractItemModel):
         self.sgicons = {}
 
         self._reload()
+
+        self.tabWidget = [item for item in QApplication.allWidgets() if item.objectName == "qt_tabwidget_stackedwidget"][0]
 
         try:
             self.icons = ts3client.ServerCache(self.schid)
@@ -1308,12 +1324,13 @@ class ServerviewModel(QAbstractItemModel):
             return ret
         elif role == Qt.FontRole:
             if type(obj) is Client and obj.isme:
-                font = QApplication.font()
+                font = self.tabWidget.font
                 font.setBold(True)
                 return font
         elif role == Qt.ForegroundRole:
-            if type(obj) is Client and obj.isRecording:
-                return QColor(Qt.darkRed)
+            if type(obj) is Client:
+                if obj.isRecording:
+                    return QColor(Qt.darkRed)
 
         return None
 
@@ -1369,9 +1386,9 @@ class ServerviewDelegate(QStyledItemDelegate):
 
         icon = index.data(Qt.DecorationRole)
         statusicons = index.data(ServerViewRoles.statusicons)
-        #font = index.data(Qt.FontRole) or QApplication.font() 
-        #brush = index.data(Qt.ForegroundRole) or Qt.white
-
+        font = index.data(Qt.FontRole)
+        brush = index.data(Qt.ForegroundRole)
+        
         if icon:
             iconsize = icon.actualSize(option.decorationSize)
             icon.paint(painter, option.rect, Qt.AlignLeft)
@@ -1383,10 +1400,12 @@ class ServerviewDelegate(QStyledItemDelegate):
 
         painter.save()
 
-        #pen = painter.pen()
-        #pen.setBrush(brush)
-        #painter.setPen(pen)
-        #painter.setFont(font)
+        if brush:
+            pen = painter.pen()
+            pen.setBrush(brush)
+            painter.setPen(pen)
+        if font:
+            painter.setFont(font)
 
         painter.drawText(headerRect, Qt.AlignLeft, index.data())
 
