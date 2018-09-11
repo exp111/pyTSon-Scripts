@@ -15,6 +15,141 @@ from PythonQt.QtGui import (QStyledItemDelegate, QStyle, QFontMetrics,
                             QApplication, QIcon, QColor, QTreeView)
 from PythonQt.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
+# Helper Stuff
+def getContacts():
+    """
+    :return:
+    """
+    db = ts3client.Config()
+    ret = []
+    q = db.query("SELECT * FROM contacts")
+    while q.next():
+        try:
+            cur = {"Key": int(q.value("key")), "Timestamp": q.value("timestamp")}
+            val = q.value("value")
+            for l in val.split('\n'):
+                try:
+                    l = l.split('=', 1)
+                    if len(l) != 2: continue
+                    if l[0] in ["Nickname","PhoneticNickname","LastSeenServerName"]: cur[l[0]] = l[1].encode('ascii', 'ignore')
+                    elif l[0] in ["LastSeenServerAddress","IDS","VolumeModifier", "LastSeen"]: cur[l[0]] = l[1]
+                    elif l[0] in ["Friend","NickShowType"]: cur[l[0]] = int(l[1])
+                    elif l[0] in ["Automute","IgnorePublicMessages","IgnorePrivateMessages","IgnorePokes","IgnoreAvatar","IgnoreAwayMessage","HaveVolumeModifier","WhisperAllow"]:
+                        if l[1] == "false": cur[l[0]] = False
+                        elif l[1] == "true": cur[l[0]] = True
+                    if l[0] == "LastSeen" and l[1]: cur["LastSeenEpoch"] = int(time.mktime(time.strptime(l[1], '%Y-%m-%dT%H:%M:%S')))
+                except: continue
+            ret.append(cur)
+        except: continue
+    del db
+    return ret
+
+def parseBadgesBlob(blob: QByteArray):
+    ret = {}
+    next = 12
+    guid_len = 0;guid = ""
+    name_len = 0;name = ""
+    url_len = 0;url = ""
+    filename = ""
+    desc_len = 0;desc = ""
+    for i in range(0, blob.size()):
+        try:
+            if i == next: #guid_len
+                guid_len = int(blob.at(i))
+                guid = str(blob.mid(i+1, guid_len))
+            elif i == (next + 1 + guid_len + 1):
+                name_len = int(blob.at(i))
+                name = str(blob.mid(i+1, name_len))
+            elif i == (next + 1 + guid_len + 1 + name_len + 2):
+                url_len = int(blob.at(i))
+                url = str(blob.mid(i+1, url_len))
+                filename = url.rsplit('/', 1)[1]
+            elif i == (next + 1 + guid_len + 1 + name_len + 2 + url_len + 2):
+                desc_len = int(blob.at(i))
+                desc = str(blob.mid(i+1, desc_len))
+                ret[guid] = {"name": name, "url": url, "filename": filename, "description": desc}
+                next = (next + guid_len + 2 + name_len + 2 + url_len + 2 + desc_len + 13)
+            delimiter = blob.mid(0, 12)
+        except:
+            ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
+            pass
+    return ret, blob
+
+
+def loadBadges():
+    """
+    Loads Badges from ts3settings.db
+    :return: int(timestamp), str(ret), dict(badges)
+    """
+    db = ts3client.Config()
+    q = db.query("SELECT * FROM Badges") #  WHERE key = BadgesListData
+    timestamp = 0
+    ret = {}
+    badges = QByteArray()
+    while q.next():
+        key = q.value("key")
+        if key == "BadgesListTimestamp":
+            timestamp = q.value("value")
+        elif key == "BadgesListData":
+            ret, badges = parseBadgesBlob(q.value("value"))
+    del db
+    return timestamp, ret, badges
+
+def parseBadges(client_badges):
+    """
+    Parses a string of badges.
+    :param client_badges:
+    :return: tuple(overwolf, dict(badges))
+    """
+    overwolf = None
+    badges = []
+    if "verwolf=" in client_badges and "badges=" in client_badges:
+        client_badges = client_badges.split(":",1)
+        overwolf = bool(int(client_badges[0].split("=",1)[1]))
+        badges = client_badges[1].split("=",1)[1].replace(":badges=", ",").split(",")
+    elif "verwolf=" in client_badges:
+        overwolf = bool(int(client_badges.split("=")[1]))
+    elif "badges=" in client_badges:
+        badges = client_badges.split("=",1)[1].replace(":badges=", ",").split(",")
+    return overwolf, badges
+
+class network(object):
+    nwmc = QNetworkAccessManager()
+    dlpath = {}
+    def downloadFile(self, url, path):
+        """
+        :param url:
+        :param path:
+        """
+        self.nwmc.connect("finished(QNetworkReply*)", self._downloadFileReply)
+        self.dlpath[url] = path
+        self.nwmc.get(QNetworkRequest(QUrl(url)))
+    def _downloadFileReply(self, reply):
+        #save to file
+        er = reply.error()
+        if er == QNetworkReply.NoError:
+            data = reply.readAll()
+            if data.isEmpty():
+                return
+            url = str(reply.url().toString())
+            with open(self.dlpath[url], 'wb') as file:
+                file.write(data.data())   
+                self.dlpath[url] = ""
+
+def getOptions():
+    """
+    :return: dict(options)
+    """
+    db = ts3client.Config()
+    q = db.query("SELECT * FROM Application")
+    ret = {}
+    while q.next():
+        key = q.value("key")
+        ret[key] = q.value("value")
+    del db
+    return ret
+
+# ServerView Classes
 class ServerViewRoles:
     """
     Additional roles used in ServerviewModel to deliver icons and spacer
@@ -872,139 +1007,7 @@ class Client(object):
             self.cache["uid"] = uid
             return uid
 
-def getContacts():
-    """
-    :return:
-    """
-    db = ts3client.Config()
-    ret = []
-    q = db.query("SELECT * FROM contacts")
-    while q.next():
-        try:
-            cur = {"Key": int(q.value("key")), "Timestamp": q.value("timestamp")}
-            val = q.value("value")
-            for l in val.split('\n'):
-                try:
-                    l = l.split('=', 1)
-                    if len(l) != 2: continue
-                    if l[0] in ["Nickname","PhoneticNickname","LastSeenServerName"]: cur[l[0]] = l[1].encode('ascii', 'ignore')
-                    elif l[0] in ["LastSeenServerAddress","IDS","VolumeModifier", "LastSeen"]: cur[l[0]] = l[1]
-                    elif l[0] in ["Friend","NickShowType"]: cur[l[0]] = int(l[1])
-                    elif l[0] in ["Automute","IgnorePublicMessages","IgnorePrivateMessages","IgnorePokes","IgnoreAvatar","IgnoreAwayMessage","HaveVolumeModifier","WhisperAllow"]:
-                        if l[1] == "false": cur[l[0]] = False
-                        elif l[1] == "true": cur[l[0]] = True
-                    if l[0] == "LastSeen" and l[1]: cur["LastSeenEpoch"] = int(time.mktime(time.strptime(l[1], '%Y-%m-%dT%H:%M:%S')))
-                except: continue
-            ret.append(cur)
-        except: continue
-    del db
-    return ret
-
-def parseBadgesBlob(blob: QByteArray):
-    ret = {}
-    next = 12
-    guid_len = 0;guid = ""
-    name_len = 0;name = ""
-    url_len = 0;url = ""
-    filename = ""
-    desc_len = 0;desc = ""
-    for i in range(0, blob.size()):
-        try:
-            if i == next: #guid_len
-                guid_len = int(blob.at(i))
-                guid = str(blob.mid(i+1, guid_len))
-            elif i == (next + 1 + guid_len + 1):
-                name_len = int(blob.at(i))
-                name = str(blob.mid(i+1, name_len))
-            elif i == (next + 1 + guid_len + 1 + name_len + 2):
-                url_len = int(blob.at(i))
-                url = str(blob.mid(i+1, url_len))
-                filename = url.rsplit('/', 1)[1]
-            elif i == (next + 1 + guid_len + 1 + name_len + 2 + url_len + 2):
-                desc_len = int(blob.at(i))
-                desc = str(blob.mid(i+1, desc_len))
-                ret[guid] = {"name": name, "url": url, "filename": filename, "description": desc}
-                next = (next + guid_len + 2 + name_len + 2 + url_len + 2 + desc_len + 13)
-            delimiter = blob.mid(0, 12)
-        except:
-            ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
-            pass
-    return ret, blob
-
-
-def loadBadges():
-    """
-    Loads Badges from ts3settings.db
-    :return: int(timestamp), str(ret), dict(badges)
-    """
-    db = ts3client.Config()
-    q = db.query("SELECT * FROM Badges") #  WHERE key = BadgesListData
-    timestamp = 0
-    ret = {}
-    badges = QByteArray()
-    while q.next():
-        key = q.value("key")
-        if key == "BadgesListTimestamp":
-            timestamp = q.value("value")
-        elif key == "BadgesListData":
-            ret, badges = parseBadgesBlob(q.value("value"))
-    del db
-    return timestamp, ret, badges
-
-def parseBadges(client_badges):
-    """
-    Parses a string of badges.
-    :param client_badges:
-    :return: tuple(overwolf, dict(badges))
-    """
-    overwolf = None
-    badges = []
-    if "verwolf=" in client_badges and "badges=" in client_badges:
-        client_badges = client_badges.split(":",1)
-        overwolf = bool(int(client_badges[0].split("=",1)[1]))
-        badges = client_badges[1].split("=",1)[1].replace(":badges=", ",").split(",")
-    elif "verwolf=" in client_badges:
-        overwolf = bool(int(client_badges.split("=")[1]))
-    elif "badges=" in client_badges:
-        badges = client_badges.split("=",1)[1].replace(":badges=", ",").split(",")
-    return overwolf, badges
-
-class network(object):
-    nwmc = QNetworkAccessManager()
-    dlpath = {}
-    def downloadFile(self, url, path):
-        """
-        :param url:
-        :param path:
-        """
-        self.nwmc.connect("finished(QNetworkReply*)", self._downloadFileReply)
-        self.dlpath[url] = path
-        self.nwmc.get(QNetworkRequest(QUrl(url)))
-    def _downloadFileReply(self, reply):
-        #save to file
-        er = reply.error()
-        if er == QNetworkReply.NoError:
-            data = reply.readAll()
-            if data.isEmpty():
-                return
-            url = str(reply.url().toString())
-            with open(self.dlpath[url], 'wb') as file:
-                file.write(data.data())   
-                self.dlpath[url] = ""
-
-def getOptions():
-    """
-    :return: dict(options)
-    """
-    db = ts3client.Config()
-    q = db.query("SELECT * FROM Application")
-    ret = {}
-    while q.next():
-        key = q.value("key")
-        ret[key] = q.value("value")
-    del db
-    return ret
-
+# Actual ServerView Stuff (Model etc.)
 class ServerviewModel(QAbstractItemModel):
     """
     ItemModel to deliver data of a serverview to ItemWidgets. The data is
