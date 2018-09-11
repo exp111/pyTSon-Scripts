@@ -543,10 +543,10 @@ class Channel(object):
                 return True
         return False
 
-    def getPassword(self, askUser=False):
+    def getPassword(self, cid, askUser=False):
         if "password" in self.cache:
             return self.cache["password"]
-        (err, path, pw) = ts3lib.getChannelConnectInfo(self.schid, item.cid) #TODO: fix this not working if we have a wrong pw saved
+        (err, path, pw) = ts3lib.getChannelConnectInfo(self.schid, self.cid) #TODO: fix this not working if we have a wrong pw saved
         if err != ts3defines.ERROR_ok:
             return ""
         if not pw:
@@ -1052,6 +1052,8 @@ class ServerviewModel(QAbstractItemModel):
         self.badgesExtRemote = "https://raw.githubusercontent.com/R4P3-NET/CustomBadges/master/badges.json"
         self.externalBadges = {}
         self.downloadExtBadges()
+
+        self.downloadedBadges = {}
         #read friends/foes from settings.db
         self.contacts = getContacts()
 
@@ -1523,7 +1525,10 @@ class ServerviewModel(QAbstractItemModel):
                             badge = self.externalBadges[badgeUuid]
                             filePath = "{}.svg".format(os.path.join(self.badgePath, badge["filename"]))
                             if not os.path.exists(filePath): #download
+                                if badgeUuid in self.downloadedBadges: #we already tried to download
+                                    return
                                 self.network.downloadFile("https://raw.githubusercontent.com/R4P3-NET/CustomBadges/master/img/{}".format(badge["filename"]), filePath)
+                                self.downloadedBadges[badgeUuid] = True
                             ret.append(QIcon(filePath))
                         
                 except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
@@ -1666,7 +1671,7 @@ class ServerviewDelegate(QStyledItemDelegate):
         if statusicons:
             for ico in reversed(statusicons):
                 ico.paint(painter, option.rect.right() - nextx,
-                          option.rect.y(), iconsize.width(), iconsize.height())
+                          option.rect.center().y() - iconsize.height() / 2, iconsize.width(), iconsize.height())
                 nextx += 18
 
         painter.restore()

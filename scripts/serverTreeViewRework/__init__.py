@@ -310,10 +310,16 @@ class NewServerTreeView():
 
     def toggle(self):
         if self.tree.isHidden():
-            self.tree.show()
-            self.tree.raise_()
+            self.show()
         else:
-            self.tree.hide()
+            self.hide()
+
+    def show(self):
+        self.tree.show()
+        self.tree.raise_()
+
+    def hide(self):
+        self.tree.hide()
 
 
 def findChildWidget(widget, checkfunc, recursive):
@@ -425,10 +431,20 @@ class serverTreeViewRework(ts3plugin):
             currentServerTree = [item for item in self.svmanagerstack.widget(self.svmanagerstack.currentIndex).children() if item.objectName == "ServerTreeView"][0]
             self.dlgs[schid] = NewServerTreeView(schid, currentServerTree) #create a new serverview over the old one as a child
 
-        if firstid:
-            self.dlgs[schid].select(firstid, firsttype, secid, sectype, action)
-
         self.dlgs[schid].toggle()
+
+    def showDialog(self, schid):
+        if schid not in self.dlgs or not self.dlgs[schid]:
+            if not self.svmanagerstack: #We need the tabmanager to see which is the current active treeview/tab
+                self.retrieveWidgets()
+            currentServerTree = [item for item in self.svmanagerstack.widget(self.svmanagerstack.currentIndex).children() if item.objectName == "ServerTreeView"][0]
+            self.dlgs[schid] = NewServerTreeView(schid, currentServerTree) #create a new serverview over the old one as a child
+
+        self.dlgs[schid].show()
+
+    def hideDialog(self, schid):
+        if schid in self.dlgs and self.dlgs[schid]:
+            self.dlgs[schid].hide()
 
     def onMenuItemEvent(self, schid, atype, menuItemID, selectedItemID):
         if menuItemID == 0:
