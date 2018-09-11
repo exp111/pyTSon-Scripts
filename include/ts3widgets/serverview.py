@@ -112,9 +112,6 @@ class Channel(object):
     def update(self):
         self.cache = {}
 
-    def getType(self):
-        return ts3defines.PluginItemType.PLUGIN_CHANNEL
-
     @property
     def name(self):
         if "name" in self.cache:
@@ -173,7 +170,7 @@ class Channel(object):
                     self.cache["spacerAlignment"] = Qt.AlignRight
                 elif al == "c":
                     self.cache["spacerAlignment"] = Qt.AlignHCenter
-                elif al == "*":
+                elif al == "*": #FIXME: don't know if this is correct; but currently no problems
                     self.cache["spacerAlignment"] = Qt.AlignJustify
 
                 st = m.group(2)
@@ -376,7 +373,7 @@ class Channel(object):
     def count(self):
         return len(self.clients) + len(self.subchans)
 
-    def child(self, row):
+    def child(self, row): #TODO: sortorder
         if row >= len(self.subchans):
             return self.clients[row - len(self.subchans)]
         else:
@@ -398,7 +395,7 @@ class Channel(object):
 
         self.subchans = newsubchans
 
-    def __iter__(self):
+    def __iter__(self): #TODO: sortorder
         for c in self.subchans:
             yield c
 
@@ -410,6 +407,14 @@ class Channel(object):
             if client.clid == clid:
                 return True
         return False
+
+    def getPassword(self, askUser=False):
+        (err, path, pw) = ts3lib.getChannelConnectInfo(self.schid, item.cid) #TODO: fix this not working if we have a wrong pw saved
+        if err != ts3defines.ERROR_ok:
+            return ""
+        if not pw:
+            pw = inputBox(self, "Enter Channel Password", "Password:")
+        return pw
 
 
 class Server(Channel):
@@ -424,9 +429,6 @@ class Server(Channel):
 
     def update(self):
         self.cache = {}
-
-    def getType(self):
-        return ts3defines.PluginItemType.PLUGIN_SERVER
 
     @property
     def name(self):
@@ -504,9 +506,6 @@ class Client(object):
 
     def __gt__(self, other):
         return other < self
-
-    def getType(self):
-        return ts3defines.PluginItemType.PLUGIN_CLIENT
 
     @property
     def name(self):
@@ -980,7 +979,7 @@ class network(object):
         self.dlpath[url] = path
         self.nwmc.get(QNetworkRequest(QUrl(url)))
     def _downloadFileReply(self, reply):
-         #save to file
+        #save to file
         er = reply.error()
         if er == QNetworkReply.NoError:
             data = reply.readAll()
@@ -988,7 +987,6 @@ class network(object):
                 return
             url = str(reply.url().toString())
             with open(self.dlpath[url], 'wb') as file:
-                ts3lib.printMessageToCurrentTab("Writing: {}".format(data))
                 file.write(data.data())   
                 self.dlpath[url] = ""
 
@@ -1498,17 +1496,17 @@ class ServerviewModel(QAbstractItemModel):
 
                 try:
                     #badges
-                    #TODO: external badges
                     overwolf, badges = parseBadges(obj.badges)
                     for badgeUuid in badges:
-                        badge = self.badges[badgeUuid]
-                        if not badge:
-                            continue
-                        filePath = "{}.svg".format(os.path.join(self.badgePath, badge["filename"]))
-                        if not os.path.exists(filePath):
-                            #download
-                            self.network.downloadFile("{}.svg".format(badge["url"]), filePath)
-                        ret.append(QIcon(filePath))
+                        #normal ts badge
+                        if badgeUuid in self.badges:
+                            badge = self.badges[badgeUuid]
+                            filePath = "{}.svg".format(os.path.join(self.badgePath, badge["filename"]))
+                            if not os.path.exists(filePath):
+                                #download
+                                self.network.downloadFile("{}.svg".format(badge["url"]), filePath)
+                            ret.append(QIcon(filePath))
+                        #TODO: external badges
                 except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
                 # priority speaker

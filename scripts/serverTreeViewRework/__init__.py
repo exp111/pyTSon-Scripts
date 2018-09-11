@@ -3,7 +3,7 @@ import os
 from ts3plugin import ts3plugin
 
 import ts3lib, ts3defines
-from ts3widgets.serverview import ServerviewModel, ServerviewDelegate, Client, Channel
+from ts3widgets.serverview import ServerviewModel, ServerviewDelegate, Client, Channel, Server
 
 from PythonQt import BoolResult
 from PythonQt.QtGui import (QApplication, QDialog, QAbstractItemView,
@@ -161,7 +161,7 @@ def inputBox(parent, title, text, default=""):
     x = QWidget(parent)
     x.setAttribute(Qt.WA_DeleteOnClose)
     ok = BoolResult()
-    text = QInputDialog.getText(x, title, text, QLineEdit.Normal, default, ok) # QDir.Home.dirName()
+    text = QInputDialog.getText(x, title, text, QLineEdit.Normal, default, ok)
     if ok: return text
     else: return False
 
@@ -242,13 +242,12 @@ class DragDropServerview(QTreeView):
             item = self.indexToObject(index)
             if not item:
                 return
-            itemType = item.getType()
             treeView = self.parent()
-            if itemType == ts3defines.PluginItemType.PLUGIN_CLIENT:
+            if type(item) is Client:
                 treeView.clientSelect(item.clid)
-            elif itemType == ts3defines.PluginItemType.PLUGIN_CHANNEL:
+            elif type(item) is Channel
                 treeView.channelSelect(item.cid)
-            elif itemType == ts3defines.PluginItemType.PLUGIN_SERVER:
+            elif type(item) is Server
                 treeView.serverSelect() #TODO: not working?
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
@@ -276,17 +275,10 @@ class DragDropServerview(QTreeView):
                     return
                 if item.hasClient(clid): #check if we're already in the channel
                     return
-                (err, passworded) = ts3lib.getChannelVariable(self.schid, item.cid, ts3defines.ChannelProperties.CHANNEL_FLAG_PASSWORD)
-                if err != ts3defines.ERROR_ok:
-                    return
-                if not passworded:
+                if not item.isPasswordProtected:
                     ts3lib.requestClientMove(self.schid, clid, item.cid, "")
                 else:
-                    (err, path, pw) = ts3lib.getChannelConnectInfo(self.schid, item.cid) #TODO: fix this not working if we have a wrong pw saved
-                    if err != ts3defines.ERROR_ok:
-                        return
-                    if not pw:
-                        pw = inputBox(self, "Enter Channel Password", "Password:")
+                    pw = item.getPassword(True)
                     ts3lib.requestClientMove(self.schid, clid, item.cid, pw)
             #elif itemType == ts3defines.PluginItemType.PLUGIN_SERVER:
                 #do nothing i guess?
