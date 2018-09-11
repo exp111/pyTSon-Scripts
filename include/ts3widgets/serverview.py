@@ -15,7 +15,6 @@ from PythonQt.QtGui import (QStyledItemDelegate, QStyle, QFontMetrics,
                             QApplication, QIcon, QColor, QTreeView)
 from PythonQt.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
-
 class ServerViewRoles:
     """
     Additional roles used in ServerviewModel to deliver icons and spacer
@@ -374,10 +373,10 @@ class Channel(object):
         return len(self.clients) + len(self.subchans)
 
     def child(self, row): #TODO: sortorder
-        if row >= len(self.subchans):
-            return self.clients[row - len(self.subchans)]
+        if row >= len(self.clients):
+            return self.subchans[row - len(self.clients)]
         else:
-            return self.subchans[row]
+            return self.clients[row]
 
     def sort(self):
         newsubchans = []
@@ -396,10 +395,10 @@ class Channel(object):
         self.subchans = newsubchans
 
     def __iter__(self): #TODO: sortorder
-        for c in self.subchans:
+        for c in self.clients:
             yield c
 
-        for c in self.clients:
+        for c in self.subchans:
             yield c
     
     def hasClient(self, clid):
@@ -409,11 +408,14 @@ class Channel(object):
         return False
 
     def getPassword(self, askUser=False):
+        if "password" in self.cache:
+            return self.cache["password"]
         (err, path, pw) = ts3lib.getChannelConnectInfo(self.schid, item.cid) #TODO: fix this not working if we have a wrong pw saved
         if err != ts3defines.ERROR_ok:
             return ""
         if not pw:
             pw = inputBox(self, "Enter Channel Password", "Password:")
+        self.cache["password"] = pw
         return pw
 
 

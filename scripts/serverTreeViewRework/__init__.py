@@ -245,9 +245,9 @@ class DragDropServerview(QTreeView):
             treeView = self.parent()
             if type(item) is Client:
                 treeView.clientSelect(item.clid)
-            elif type(item) is Channel
+            elif type(item) is Channel:
                 treeView.channelSelect(item.cid)
-            elif type(item) is Server
+            elif type(item) is Server:
                 treeView.serverSelect() #TODO: not working?
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
@@ -256,8 +256,7 @@ class DragDropServerview(QTreeView):
             item = self.indexToObject(index)
             if not item:
                 return
-            itemType = item.getType()
-            if itemType == ts3defines.PluginItemType.PLUGIN_CLIENT:
+            if type(item) is Client:
                 #open chat
                 if item.isme: #don't chat with your self. get friends. TODO: change your name
                     return
@@ -268,7 +267,7 @@ class DragDropServerview(QTreeView):
                 treeView.onSearchItemByName(item.name, QTextDocument.FindCaseSensitively | QTextDocument.FindWholeWords, True, False, True)
                 #if found:
                 serverView.onOpenChatRequest() #onOpenChatRequest(anyID) is useless (prolly called from action menu; opens chat tab for selected client)
-            elif itemType == ts3defines.PluginItemType.PLUGIN_CHANNEL:
+            elif type(item) is Channel:
                 #join channel
                 (err, clid) = ts3lib.getClientID(self.schid)
                 if err != ts3defines.ERROR_ok:
@@ -280,7 +279,7 @@ class DragDropServerview(QTreeView):
                 else:
                     pw = item.getPassword(True)
                     ts3lib.requestClientMove(self.schid, clid, item.cid, pw)
-            #elif itemType == ts3defines.PluginItemType.PLUGIN_SERVER:
+            #elif type(item) is Server:
                 #do nothing i guess?
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
