@@ -9,6 +9,7 @@ import ts3defines
 import ts3client
 
 import re
+from json import load, loads
 
 from PythonQt.QtCore import Qt, QAbstractItemModel, QModelIndex, QFile, QByteArray, QIODevice, QDataStream, QUrl
 from PythonQt.QtGui import (QStyledItemDelegate, QStyle, QFontMetrics,
@@ -1041,17 +1042,24 @@ class ServerviewModel(QAbstractItemModel):
 
         self._reload()
 
+        self.network = network()
+
         self.tabWidget = [item for item in QApplication.allWidgets() if item.objectName == "qt_tabwidget_stackedwidget"][0]
         #read badges from settings.db
         self.badgePath = os.path.join(ts3lib.getConfigPath(), "cache", "badges")
         self.badges = loadBadges()[1]
+        #read external badges #FIXME: don't download everytime? causes lag
+        self.badgesExtRemote = "https://raw.githubusercontent.com/R4P3-NET/CustomBadges/master/badges.json"
+        self.externalBadges = {}
+        self.downloadExtBadges()
         #read friends/foes from settings.db
         self.contacts = getContacts()
 
-        self.network = network()
+        
         self.options = getOptions()
         #TODO: handle self.options["SortClientsAfterChannels"] somewhere
         #TODO: show hovered items in another color
+        #TODO: fix serverview showing old stuff after being banned
 
         try:
             self.icons = ts3client.ServerCache(self.schid)
@@ -1507,11 +1515,17 @@ class ServerviewModel(QAbstractItemModel):
                         if badgeUuid in self.badges:
                             badge = self.badges[badgeUuid]
                             filePath = "{}.svg".format(os.path.join(self.badgePath, badge["filename"]))
-                            if not os.path.exists(filePath):
-                                #download
+                            if not os.path.exists(filePath): #download
                                 self.network.downloadFile("{}.svg".format(badge["url"]), filePath)
                             ret.append(QIcon(filePath))
-                        #TODO: external badges
+                        #external badges
+                        if badgeUuid in self.externalBadges:
+                            badge = self.externalBadges[badgeUuid]
+                            filePath = "{}.svg".format(os.path.join(self.badgePath, badge["filename"]))
+                            if not os.path.exists(filePath): #download
+                                self.network.downloadFile("https://raw.githubusercontent.com/R4P3-NET/CustomBadges/master/img/{}".format(badge["filename"]), filePath)
+                            ret.append(QIcon(filePath))
+                        
                 except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
                 # priority speaker
@@ -1564,6 +1578,15 @@ class ServerviewModel(QAbstractItemModel):
 
         return None
 
+    def downloadExtBadges(self):
+        self.network.nwmc.connect("finished(QNetworkReply*)", self._loadExtBadges)
+        self.network.nwmc.get(QNetworkRequest(QUrl(self.badgesExtRemote)))
+
+    def _loadExtBadges(self, reply):
+        if reply.error() == QNetworkReply.NoError:
+            data = reply.readAll().data().decode('utf-8')
+            self.externalBadges = loads(data)
+        self.network.nwmc.disconnect("finished(QNetworkReply*)", self._loadExtBadges)
 
 class ServerviewDelegate(QStyledItemDelegate):
     """
