@@ -183,6 +183,8 @@ class DragDropServerview(QTreeView):
         self.setDragDropMode(QAbstractItemView.InternalMove)
         self.setExpandsOnDoubleClick(False)
         self.schid = schid
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.setObjectName("CustomServerTreeView{}".format(schid))
 
         if parent:
             self.resize(parent.size)
@@ -288,6 +290,11 @@ class DragDropServerview(QTreeView):
                 #do nothing i guess?
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
+    def onContextMenu(self, pos):
+        try:
+            self.parent().customContextMenuRequested(pos)
+        except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
+
 class NewServerTreeView():
     def __init__(self, schid, parent=None):
         self.lay = QHBoxLayout(parent)
@@ -297,6 +304,7 @@ class NewServerTreeView():
         parent.setLayout(self.lay)
 
         self.tree.connect("clicked(QModelIndex)", self.tree.onItemClicked)
+        self.tree.connect("customContextMenuRequested(QPoint)", self.tree.onContextMenu)
     
     def close(self):
         self.lay.removeWidget(self.tree)
