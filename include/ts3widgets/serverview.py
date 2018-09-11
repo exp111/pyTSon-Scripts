@@ -966,7 +966,7 @@ class Client(object):
         if self.inputMuted:
             return "INPUT_MUTED"
 
-        if self.isWhispering:
+        if self.isTalking and self.isWhispering:
             return "PLAYER_WHISPER"
 
         if self.isChannelCommander:
@@ -1398,7 +1398,7 @@ class ServerviewModel(QAbstractItemModel):
         if obj.isTalking != talks:
             obj.isTalking = talks
             changed = True
-        if obj.isWhispering != whispers:
+        if obj.isWhispering != whispers: #FIXME: if client in other channel stops whispering he still has the icon
             obj.isWhispering = whispers
             changed = True
 

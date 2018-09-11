@@ -185,6 +185,7 @@ class DragDropServerview(QTreeView):
         self.schid = schid
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.setObjectName("CustomServerTreeView{}".format(schid))
+        #self.setAnimated(True) #FIXME: everything under that gets black or smth
 
         if parent:
             self.resize(parent.size)
