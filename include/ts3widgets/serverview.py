@@ -829,7 +829,6 @@ class Client(object):
         if self.inputMuted:
             return "INPUT_MUTED"
 
-        #TODO: Add isWhispering
         if self.isWhispering:
             return "PLAYER_WHISPER"
 
@@ -971,32 +970,27 @@ def parseBadges(client_badges):
 
 class network(object):
     nwmc = QNetworkAccessManager()
-    def getFile(self, url):
-        """
-        :param url:
-        """
-        self.nwmc.connect("finished(QNetworkReply*)", self._getFileReply)
-        self.nwmc.get(QNetworkRequest(QUrl(url)))
-    def _getFileReply(self, reply):
-        del self.nwmc
-
+    dlpath = {}
     def downloadFile(self, url, path):
         """
         :param url:
         :param path:
         """
         self.nwmc.connect("finished(QNetworkReply*)", self._downloadFileReply)
-        dlpath = path
+        self.dlpath[url] = path
         self.nwmc.get(QNetworkRequest(QUrl(url)))
     def _downloadFileReply(self, reply):
-        del self.nwmc #TODO: save to file
-        """
-        QByteArray b = reply->readAll();
-        fil = QFile(dlpath);
-        fil.open(QIODevice.WriteOnly);
-        out QDataStream(fil);
-        out << b;
-        """
+         #save to file
+        er = reply.error()
+        if er == QNetworkReply.NoError:
+            data = reply.readAll()
+            if data.isEmpty():
+                return
+            url = str(reply.url().toString())
+            with open(self.dlpath[url], 'wb') as file:
+                ts3lib.printMessageToCurrentTab("Writing: {}".format(data))
+                file.write(data.data())   
+                self.dlpath[url] = ""
 
 def getOptions():
     """
@@ -1510,10 +1504,10 @@ class ServerviewModel(QAbstractItemModel):
                         badge = self.badges[badgeUuid]
                         if not badge:
                             continue
-                        filePath = "{}.svg".format(os.path.join(self.badgePath, badge['filename']))
+                        filePath = "{}.svg".format(os.path.join(self.badgePath, badge["filename"]))
                         if not os.path.exists(filePath):
                             #download
-                            self.network.downloadFile("{}.svg".format(badge['url']), filePath)
+                            self.network.downloadFile("{}.svg".format(badge["url"]), filePath)
                         ret.append(QIcon(filePath))
                 except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
