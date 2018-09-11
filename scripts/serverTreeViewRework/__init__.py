@@ -251,8 +251,13 @@ class DragDropServerview(QTreeView):
                 treeView.serverSelect() #TODO: not working?
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
-    def onItemDoubleClicked(self, index):
+    def mouseDoubleClickEvent(self, event):
         try:
+            if event.button() != Qt.LeftButton:
+                return
+
+            index = self.indexAt(event.pos())
+        
             item = self.indexToObject(index)
             if not item:
                 return
@@ -262,7 +267,7 @@ class DragDropServerview(QTreeView):
                     return
                 treeView = self.parent()
                 serverView = treeView.parent()
-                #TODO: find better way to select or better way to open chat #set the original tree view index to our current
+                #TODO: find better way to select or better way to open chat #TODO: maybe indexAt (needs same layout as old view tho) #set the original tree view index to our current
                 #found = BoolResult()
                 treeView.onSearchItemByName(item.name, QTextDocument.FindCaseSensitively | QTextDocument.FindWholeWords, True, False, True)
                 #if found:
@@ -291,7 +296,6 @@ class NewServerTreeView():
         self.lay.setContentsMargins(0,0,0,0)
         parent.setLayout(self.lay)
 
-        self.tree.connect("doubleClicked(QModelIndex)", self.tree.onItemDoubleClicked)
         self.tree.connect("clicked(QModelIndex)", self.tree.onItemClicked)
     
     def close(self):
