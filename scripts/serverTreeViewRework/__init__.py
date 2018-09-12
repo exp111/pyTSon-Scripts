@@ -293,7 +293,9 @@ class DragDropServerview(QTreeView):
 
     def onContextMenu(self, pos):
         try:
-            self.parent().customContextMenuRequested(pos)
+            originalTreeView = self.parent()
+            originalTreeView.setCurrentIndex(originalTreeView.indexAt(pos)) #FIXME: this requires the trees to be in perfect sync
+            originalTreeView.customContextMenuRequested(pos)
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
 class NewServerTreeView():
@@ -441,6 +443,7 @@ class serverTreeViewRework(ts3plugin):
         if schid not in self.dlgs or not self.dlgs[schid]:
             if not self.svmanagerstack: #We need the tabmanager to see which is the current active treeview/tab
                 self.retrieveWidgets()
+            #FIXME: get proper serverview for schid
             currentServerTree = [item for item in self.svmanagerstack.widget(self.svmanagerstack.currentIndex).children() if item.objectName == "ServerTreeView"][0]
             self.dlgs[schid] = NewServerTreeView(schid, currentServerTree) #create a new serverview over the old one as a child
 
@@ -450,6 +453,7 @@ class serverTreeViewRework(ts3plugin):
         if schid not in self.dlgs or not self.dlgs[schid]:
             if not self.svmanagerstack: #We need the tabmanager to see which is the current active treeview/tab
                 self.retrieveWidgets()
+            #FIXME: get proper serverview for schid
             currentServerTree = [item for item in self.svmanagerstack.widget(self.svmanagerstack.currentIndex).children() if item.objectName == "ServerTreeView"][0]
             self.dlgs[schid] = NewServerTreeView(schid, currentServerTree) #create a new serverview over the old one as a child
 
