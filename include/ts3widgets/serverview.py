@@ -133,9 +133,12 @@ class network(object):
             if data.isEmpty():
                 return
             url = str(reply.url().toString())
-            with open(self.dlpath[url], 'wb') as file:
-                file.write(data.data())   
-                self.dlpath[url] = ""
+            self.saveDataToFile(self.dlpath[url], data)
+            self.dlpath[url] = ""
+            
+    def saveDataToFile(self, path, data):
+        with open(path, 'wb') as file:
+            file.write(data.data())            
 
 def getOptions():
     """
@@ -873,6 +876,21 @@ class Client(object):
             return i == 1
 
     @property
+    def isMuted(self):
+        if "isMuted" in self.cache:
+            return self.cache["isMuted"]
+
+        err, i = ts3lib.getClientVariableAsInt(self.schid, self.clid,
+                                               ts3defines.ClientProperties.CLIENT_IS_MUTED)
+        if err != ts3defines.ERROR_ok:
+            _errprint("Error getting client ismuted flag", err, self.schid,
+                      self.clid)
+            return False
+        else:
+            self.cache["isMuted"] = i == 1
+            return i == 1
+
+    @property
     def hardwareInputMuted(self):
         if "hardwareInputMuted" in self.cache:
             return self.cache["hardwareInputMuted"]
@@ -966,6 +984,9 @@ class Client(object):
         if self.inputMuted:
             return "INPUT_MUTED"
 
+        if self.isMuted:
+            return "INPUT_MUTED"
+
         if self.isTalking and self.isWhispering:
             return "PLAYER_WHISPER"
 
@@ -1048,10 +1069,14 @@ class ServerviewModel(QAbstractItemModel):
         #read badges from settings.db
         self.badgePath = os.path.join(ts3lib.getConfigPath(), "cache", "badges")
         self.badges = loadBadges()[1]
-        #read external badges #FIXME: don't download everytime? causes lag
+        #read/download external badges
         self.badgesExtRemote = "https://raw.githubusercontent.com/R4P3-NET/CustomBadges/master/badges.json"
         self.externalBadges = {}
-        self.downloadExtBadges()
+        self.externalBadgePath = os.path.join(self.badgePath, "badges.json")
+        if not os.path.exists(self.externalBadgePath):
+            self.downloadExtBadges()
+        else:
+            self.readExtBadges()
 
         self.downloadedBadges = {}
         #read friends/foes from settings.db
@@ -1591,9 +1616,14 @@ class ServerviewModel(QAbstractItemModel):
 
     def _loadExtBadges(self, reply):
         if reply.error() == QNetworkReply.NoError:
-            data = reply.readAll().data().decode('utf-8')
-            self.externalBadges = loads(data)
+            data = reply.readAll()
+            self.externalBadges = loads(data.data().decode('utf-8'))
+            self.network.saveDataToFile(self.externalBadgePath, data)
         self.network.nwmc.disconnect("finished(QNetworkReply*)", self._loadExtBadges)
+
+    def readExtBadges(self):
+        with open(self.externalBadgePath, 'r') as f:
+            self.externalBadges = load(f)
 
 class ServerviewDelegate(QStyledItemDelegate):
     """
