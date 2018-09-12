@@ -1057,11 +1057,13 @@ class ServerviewModel(QAbstractItemModel):
         #read friends/foes from settings.db
         self.contacts = getContacts()
 
-        
+        #Get Options from settings.db
         self.options = getOptions()
+
         #TODO: handle self.options["SortClientsAfterChannels"] somewhere
         #TODO: show hovered items in another color
-        #TODO: fix serverview showing old stuff after being banned
+        #FIXME: fix serverview showing old stuff after being banned
+        #FIXME: muting other clients locally doesn't show the mute icon
 
         try:
             self.icons = ts3client.ServerCache(self.schid)
@@ -1376,7 +1378,7 @@ class ServerviewModel(QAbstractItemModel):
         self.onClientMoveEvent(schid, clientID, oldChannelID, newChannelID,
                                visibility, "")
 
-    def onClientKickFromServerEvent(self, schid, clientID, oldChannelID,
+    def onClientKickFromServerEvent(self, schid, clientID, oldChannelID, #FIXME: check if it works correctly. else check for clientID and _reload()
                                     newChannelID, visibility, kickerID,
                                     kickerName, kickerUniqueIdentifier,
                                     kickMessage):
