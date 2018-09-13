@@ -267,6 +267,7 @@ class DragDropServerview(QTreeView):
             if type(item) is Client:
                 #open chat
                 if item.isme: #don't chat with your self. get friends. TODO: change your name
+                    #TODO: self.edit(index)
                     return
                 treeView = self.parent()
                 serverView = treeView.parent()

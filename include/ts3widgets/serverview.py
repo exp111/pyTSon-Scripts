@@ -172,7 +172,7 @@ class Channel(object):
     """
     Object wrapper for a channel on a TS3 server.
     """
-
+    sortClientsAfterChannels = True
     def __init__(self, schid, cid):
         super().__init__()
         self.schid = schid
@@ -512,10 +512,16 @@ class Channel(object):
         return len(self.clients) + len(self.subchans)
 
     def child(self, row): #TODO: sortorder
-        if row >= len(self.clients):
-            return self.subchans[row - len(self.clients)]
+        if Channel.sortClientsAfterChannels:
+            if row >= len(self.subchans):
+                return self.clients[row - len(self.subchans)]
+            else:
+                return self.subchans[row]
         else:
-            return self.clients[row]
+            if row >= len(self.clients):
+                return self.subchans[row - len(self.clients)]
+            else:
+                return self.clients[row]
 
     def sort(self):
         newsubchans = []
@@ -534,11 +540,18 @@ class Channel(object):
         self.subchans = newsubchans
 
     def __iter__(self): #TODO: sortorder
-        for c in self.clients:
-            yield c
+        if Channel.sortClientsAfterChannels:
+            for c in self.subchans:
+                yield c
 
-        for c in self.subchans:
-            yield c
+            for c in self.clients:
+                yield c
+        else:
+            for c in self.clients:
+                yield c
+
+            for c in self.subchans:
+                yield c
     
     def hasClient(self, clid):
         for client in self.clients:
@@ -1035,7 +1048,6 @@ class ServerviewModel(QAbstractItemModel):
     ItemModel to deliver data of a serverview to ItemWidgets. The data is
     delivered in one column.
     """
-
     def __init__(self, schid, iconpack=None, parent=None):
         """
         Instantiates a new ServerviewModel object. This raises an exception if
@@ -1084,11 +1096,11 @@ class ServerviewModel(QAbstractItemModel):
 
         #Get Options from settings.db
         self.options = getOptions()
+        Channel.sortClientsAfterChannels = bool(int(self.options["SortClientsAfterChannels"]))
 
-        #TODO: handle self.options["SortClientsAfterChannels"] somewhere
+        #FIXME: try to get options & contacts from ts as they cache it
         #TODO: show hovered items in another color
         #FIXME: fix serverview showing old stuff after being banned
-        #FIXME: muting other clients locally doesn't show the mute icon
 
         try:
             self.icons = ts3client.ServerCache(self.schid)
@@ -1701,7 +1713,7 @@ class ServerviewDelegate(QStyledItemDelegate):
 
         nextx = 18
         if statusicons:
-            for ico in reversed(statusicons):
+            for ico in reversed(statusicons): #FIXME: check here if icon exists else don't draw
                 ico.paint(painter, option.rect.right() - nextx,
                           option.rect.center().y() - iconsize.height() / 2, iconsize.width(), iconsize.height())
                 nextx += 18
