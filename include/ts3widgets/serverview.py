@@ -1580,14 +1580,25 @@ class ServerviewModel(QAbstractItemModel):
                     ret.append(QIcon(self.iconpack.icon("IS_TALKER")))
                 elif obj.talkPower < obj.parentNode.neededTalkPower:
                     ret.append(QIcon(self.iconpack.icon("INPUT_MUTED")))
-                #FIXME: channelgroup
+                # channelgroup
                 if obj.channelGroup in self.cgicons:
-                    ret.append(QIcon(self.icons.icon(
-                        self.cgicons[obj.channelGroup])))
-                #FIXME: servergroups
+                    cgID = self.cgicons[obj.channelGroup]
+                    if cgID == 0:
+                        continue
+                    elif cgID in range(100, 700, 100):
+                        ret.append(QIcon(self.iconpack.icon("group_{}".format(cgID))))
+                    else:
+                        ret.append(QIcon(self.icons.icon(cgID)))
+                # servergroups
                 for sg in obj.serverGroups:
                     if sg in self.sgicons:
-                        ret.append(QIcon(self.icons.icon(self.sgicons[sg])))
+                        sgID = self.sgicons[sg]
+                        if sgID == 0:
+                            continue
+                        elif sgID in range(100, 700, 100):
+                            ret.append(QIcon(self.iconpack.icon("group_{}".format(sgID))))
+                        else:
+                            ret.append(QIcon(self.icons.icon(sgID)))
                 # clienticon
                 if obj.iconID != 0:
                     ret.append(QIcon(self.icons.icon(obj.iconID)))
