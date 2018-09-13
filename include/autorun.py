@@ -163,6 +163,8 @@ def printMetadata(item, methods=True, signals=True, slots=True, props=True):
 self = QApplication.instance()
 tree = [item for item in self.allWidgets() if item.objectName == "ServerTreeView"][0]
 tree.setAnimated(True)
+iconpack = ts3client.IconPack.current()
+iconpack.open()
 timer = QTimer()
 timer.setTimerType(2)
 schid = getCurrentServerConnectionHandlerID()

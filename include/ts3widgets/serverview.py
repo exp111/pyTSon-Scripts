@@ -1538,7 +1538,9 @@ class ServerviewModel(QAbstractItemModel):
             if type(obj) is Channel:
                 if obj.isDefault:
                     ret.append(QIcon(self.iconpack.icon("DEFAULT")))
-                if obj.codec == ts3defines.CodecType.CODEC_OPUS_MUSIC:
+                if obj.isPasswordProtected:
+                    ret.append(QIcon(self.iconpack.icon("PRIVATE")))
+                if obj.codec == ts3defines.CodecType.CODEC_OPUS_MUSIC or obj.codec == ts3defines.CodecType.CODEC_CELT_MONO:
                     ret.append(QIcon(self.iconpack.icon("MUSIC")))
                 if obj.neededTalkPower > 0:
                     ret.append(QIcon(self.iconpack.icon("MODERATED")))
@@ -1547,31 +1549,29 @@ class ServerviewModel(QAbstractItemModel):
             elif type(obj) is Client:
                 #TODO: isWhisperTarget
                 #ret.append(QIcon(self.iconpack.icon("ON_WHISPERLIST")))
-
-                try:
-                    #badges
-                    overwolf, badges = parseBadges(obj.badges)
-                    for badgeUuid in badges:
-                        #normal ts badge
-                        if badgeUuid in self.badges:
-                            badge = self.badges[badgeUuid]
-                            filePath = "{}.svg".format(os.path.join(self.badgePath, badge["filename"]))
-                            if not os.path.exists(filePath): #download
-                                self.network.downloadFile("{}.svg".format(badge["url"]), filePath)
-                            ret.append(QIcon(filePath))
-                        #external badges
-                        if badgeUuid in self.externalBadges:
-                            badge = self.externalBadges[badgeUuid]
-                            filePath = "{}.svg".format(os.path.join(self.badgePath, badge["filename"]))
-                            if not os.path.exists(filePath): #download
-                                if badgeUuid in self.downloadedBadges: #we already tried to download
-                                    return
-                                self.network.downloadFile("https://raw.githubusercontent.com/R4P3-NET/CustomBadges/master/img/{}".format(badge["filename"]), filePath)
-                                self.downloadedBadges[badgeUuid] = True
-                            ret.append(QIcon(filePath))
-                        
-                except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
-
+                # badges
+                overwolf, badges = parseBadges(obj.badges)
+                for badgeUuid in badges:
+                    #normal ts badge
+                    if badgeUuid in self.badges:
+                        badge = self.badges[badgeUuid]
+                        filePath = "{}.svg".format(os.path.join(self.badgePath, badge["filename"]))
+                        if not os.path.exists(filePath): #download
+                            if badgeUuid in self.downloadedBadges: #we already tried to download
+                                return
+                            self.network.downloadFile("{}.svg".format(badge["url"]), filePath)
+                            self.downloadedBadges[badgeUuid] = True
+                        ret.append(QIcon(filePath))
+                    #external badges
+                    if badgeUuid in self.externalBadges:
+                        badge = self.externalBadges[badgeUuid]
+                        filePath = "{}.svg".format(os.path.join(self.badgePath, badge["filename"]))
+                        if not os.path.exists(filePath): #download
+                            if badgeUuid in self.downloadedBadges: #we already tried to download
+                                return
+                            self.network.downloadFile("https://raw.githubusercontent.com/R4P3-NET/CustomBadges/master/img/{}".format(badge["filename"]), filePath)
+                            self.downloadedBadges[badgeUuid] = True
+                        ret.append(QIcon(filePath))
                 # priority speaker
                 if obj.isPrioritySpeaker:
                     ret.append(QIcon(self.iconpack.icon("CAPTURE")))
