@@ -1583,9 +1583,7 @@ class ServerviewModel(QAbstractItemModel):
                 # channelgroup
                 if obj.channelGroup in self.cgicons:
                     cgID = self.cgicons[obj.channelGroup]
-                    if cgID == 0:
-                        continue
-                    elif cgID in range(100, 700, 100):
+                    if cgID in range(100, 700, 100):
                         ret.append(QIcon(self.iconpack.icon("group_{}".format(cgID))))
                     else:
                         ret.append(QIcon(self.icons.icon(cgID)))
@@ -1672,7 +1670,7 @@ class ServerviewDelegate(QStyledItemDelegate):
                                  option.rect.width(), option.rect.height(),
                                  align, ctext)
             else:
-                fm = QFontMetrics(QApplication.font())
+                fm = QFontMetrics(self.tabWidget.font)
                 w = l = fm.width(ctext)
                 txt = ctext
                 while l < option.rect.width():
@@ -1684,8 +1682,11 @@ class ServerviewDelegate(QStyledItemDelegate):
                                  Qt.AlignLeft, txt)
 
     def paint(self, painter, option, index):
+        #if option.state & QStyle.State_MouseOver and option.state & ~QStyle.State_MouseOver:
+        #    painter.fillRect(option.rect, option.palette.highlight()) #FIXME: get original color here too
+        
         if option.state & QStyle.State_Selected:
-            painter.fillRect(option.rect, option.palette.highlight())
+            painter.fillRect(option.rect, option.palette.highlight()) #FIXME: get original color of theme
 
         if not index.isValid():
             super().paint(painter, option, index)
@@ -1702,7 +1703,7 @@ class ServerviewDelegate(QStyledItemDelegate):
         font = index.data(Qt.FontRole)
         brush = index.data(Qt.ForegroundRole)
         
-        if icon:
+        if icon: #FIXME: icon size
             iconsize = icon.actualSize(option.decorationSize)
             icon.paint(painter, option.rect, Qt.AlignLeft)
         else:
