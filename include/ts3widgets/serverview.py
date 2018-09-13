@@ -1539,7 +1539,7 @@ class ServerviewModel(QAbstractItemModel):
                 if obj.isDefault:
                     ret.append(QIcon(self.iconpack.icon("DEFAULT")))
                 if obj.isPasswordProtected:
-                    ret.append(QIcon(self.iconpack.icon("PRIVATE")))
+                    ret.append(QIcon(self.iconpack.icon("REGISTER")))
                 if obj.codec == ts3defines.CodecType.CODEC_OPUS_MUSIC or obj.codec == ts3defines.CodecType.CODEC_CELT_MONO:
                     ret.append(QIcon(self.iconpack.icon("MUSIC")))
                 if obj.neededTalkPower > 0:
