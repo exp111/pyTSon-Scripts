@@ -1670,7 +1670,7 @@ class ServerviewDelegate(QStyledItemDelegate):
                                  option.rect.width(), option.rect.height(),
                                  align, ctext)
             else:
-                fm = QFontMetrics(self.tabWidget.font)
+                fm = QFontMetrics(self.parent().model().tabWidget.font)
                 w = l = fm.width(ctext)
                 txt = ctext
                 while l < option.rect.width():
@@ -1684,7 +1684,7 @@ class ServerviewDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         #if option.state & QStyle.State_MouseOver and option.state & ~QStyle.State_MouseOver:
         #    painter.fillRect(option.rect, option.palette.highlight()) #FIXME: get original color here too
-        
+
         if option.state & QStyle.State_Selected:
             painter.fillRect(option.rect, option.palette.highlight()) #FIXME: get original color of theme
 
