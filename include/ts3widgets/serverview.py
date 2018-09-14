@@ -1647,6 +1647,19 @@ class ServerviewModel(QAbstractItemModel):
     def readExtBadges(self):
         with open(self.externalBadgePath, 'r') as f:
             self.externalBadges = load(f)
+    
+    def find(self, name, flags, channel=None):
+        #ts3lib.printMessageToCurrentTab(str(self.match(self.root, Qt.DisplayRole, name, -1, flags)))
+        if not channel:
+            channel = self.root
+        ret = {}
+        for i=0 in range(channel.count):
+            child = channel.child(i)
+            #if matchString(child.name, name, flags) #TODO: this
+            #    ret.append(child)
+            if type(child) is Channel:
+                ret.append(find(name, flags, child))
+        return ret
 
 class ServerviewDelegate(QStyledItemDelegate):
     """

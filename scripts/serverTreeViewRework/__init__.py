@@ -251,7 +251,8 @@ class DragDropServerview(QTreeView):
             elif type(item) is Channel:
                 treeView.channelSelect(item.cid)
             elif type(item) is Server:
-                treeView.serverSelect() #TODO: not working?
+                #treeView.serverSelect() #not working
+                treeView.setCurrentIndex(tree.model().index(0,0)) #Select the first item as it is always the server
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
     def mouseDoubleClickEvent(self, event):
@@ -299,6 +300,16 @@ class DragDropServerview(QTreeView):
             originalTreeView.customContextMenuRequested(pos)
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
+    def onSearch(name, flags, isRepeat, searchAllTabs, found): #TODO: this
+        try:
+            if not searchAllTabs:
+                if self.schid != ts3lib.getCurrentServerConnectionHandlerID():
+                    return
+            
+            #ret = self.svmodel.find(name, flags)       
+            #ts3lib.printMessageToCurrentTab(str(ret))
+        except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
+
 class NewServerTreeView():
     def __init__(self, schid, parent=None):
         self.lay = QHBoxLayout(parent)
@@ -309,6 +320,9 @@ class NewServerTreeView():
 
         self.tree.connect("clicked(QModelIndex)", self.tree.onItemClicked)
         self.tree.connect("customContextMenuRequested(QPoint)", self.tree.onContextMenu)
+
+        self.searchFrame = [item for item in QApplication.instance().allWidgets() if type(item).__name__ == "SearchFrame"][0]
+        self.searchFrame.connect("find(QString,QTextDocument::FindFlags,bool,bool,bool&)", self.tree.onSearch) #FIXME: not connecting
     
     def close(self):
         self.lay.removeWidget(self.tree)
