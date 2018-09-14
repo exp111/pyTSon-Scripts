@@ -1653,12 +1653,12 @@ class ServerviewModel(QAbstractItemModel):
         if not channel:
             channel = self.root
         ret = {}
-        for i=0 in range(channel.count):
-            child = channel.child(i)
+        #for i=0 in range(channel.count):
+        #    child = channel.child(i)
             #if matchString(child.name, name, flags) #TODO: this
             #    ret.append(child)
-            if type(child) is Channel:
-                ret.append(find(name, flags, child))
+        #    if type(child) is Channel:
+        #        ret.append(find(name, flags, child))
         return ret
 
 class ServerviewDelegate(QStyledItemDelegate):

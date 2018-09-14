@@ -322,7 +322,7 @@ class NewServerTreeView():
         self.tree.connect("customContextMenuRequested(QPoint)", self.tree.onContextMenu)
 
         self.searchFrame = [item for item in QApplication.instance().allWidgets() if type(item).__name__ == "SearchFrame"][0]
-        self.searchFrame.connect("find(QString,QTextDocument::FindFlags,bool,bool,bool&)", self.tree.onSearch) #FIXME: not connecting
+        self.searchFrame.connect("find(QString,QTextDocument::FindFlags,bool,bool,bool&)", self.tree.onSearch)
     
     def close(self):
         self.lay.removeWidget(self.tree)
@@ -405,6 +405,7 @@ class serverTreeViewRework(ts3plugin):
 
         self.last = {}
         self.dlgs = {}
+        self.autoStart = True
 
         self.retrieveWidgets()
 
@@ -419,7 +420,6 @@ class serverTreeViewRework(ts3plugin):
     def onNewServerview(self, obj, ev):
         #this will cause to install eventfilters on the trees
         self.retrieveWidgets()
-        #TODO: maybe create a new servertreeview here?
 
     def onTreeKey(self, obj, event):
         if event.type() == QEvent.KeyPress:
@@ -449,12 +449,13 @@ class serverTreeViewRework(ts3plugin):
         if self.svmanagerstack:
             self.svmanagerstack.installEventFilter(self.svobserver)
             for tree in findAllChildWidgets(self.svmanagerstack, lambda x: "TreeView" in str(type(x)), True):
+                #TODO: maybe create a new servertreeview here?
                 tree.installEventFilter(self.treekeyobserver)
         else:
             QTimer.singleShot(300, self.retrieveWidgets)
 
 
-    def toggleDialog(self, schid, firstid=None, firsttype=None, secid=None, sectype=None, action=None):
+    def toggleDialog(self, schid):
         if schid not in self.dlgs or not self.dlgs[schid]:
             if not self.svmanagerstack: #We need the tabmanager to see which is the current active treeview/tab
                 self.retrieveWidgets()
