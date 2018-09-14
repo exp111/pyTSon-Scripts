@@ -653,7 +653,9 @@ class Client(object):
     def __lt__(self, other):
         assert type(other) is Client
 
-        if self.talkPower != other.talkPower:
+        if self.channelGroup != other.channelGroup: #FIXME: check i_group_sort_id
+            return self.channelGroup < other.channelGroup
+        elif self.talkPower != other.talkPower:
             return other.talkPower < self.talkPower
         else:
             return self.name.lower() < other.name.lower()
