@@ -251,8 +251,8 @@ class DragDropServerview(QTreeView):
             elif type(item) is Channel:
                 treeView.channelSelect(item.cid)
             elif type(item) is Server:
-                #treeView.serverSelect() #not working
-                treeView.setCurrentIndex(tree.model().index(0,0)) #Select the first item as it is always the server
+                treeView.setCurrentIndex(treeView.model().index(0,0)) #Select the first item as it is always the server
+                treeView.serverSelect() #then force refresh the infoframe
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
     def mouseDoubleClickEvent(self, event):
