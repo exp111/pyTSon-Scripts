@@ -5,14 +5,17 @@ from ts3plugin import ts3plugin
 import ts3lib, ts3defines, ts3client
 import re
 
+from json import load, loads
+
 from PythonQt import BoolResult
 from PythonQt.QtGui import (QApplication, QDialog, QAbstractItemView,
                             QTreeView, QHBoxLayout, QItemSelection,
                             QItemSelectionModel, QTextDocument, QWidget, 
                             QInputDialog, QLineEdit, QStyledItemDelegate,
                             QStyle, QFontMetrics, QIcon)
-from PythonQt.QtCore import Qt, QEvent, QTimer, QMimeData, QModelIndex
+from PythonQt.QtCore import Qt, QEvent, QTimer, QMimeData, QModelIndex, QByteArray
 from PythonQt.pytson import EventFilterObject
+from PythonQt.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 # Helper Functions
 def getClientIDByName(name:str, schid:int=0, use_displayname:bool=False, multi:bool=False):
@@ -64,7 +67,116 @@ def getObjectByName(name:str, schid:int=0):
     else:
         return 0
 
+def getOptions():
+    """
+    :return: dict(options)
+    """
+    db = ts3client.Config()
+    q = db.query("SELECT * FROM Application")
+    ret = {}
+    while q.next():
+        key = q.value("key")
+        ret[key] = q.value("value")
+    del db
+    return ret
+
+def parseBadgesBlob(blob: QByteArray):
+    ret = {}
+    next = 12
+    guid_len = 0;guid = ""
+    name_len = 0;name = ""
+    url_len = 0;url = ""
+    filename = ""
+    desc_len = 0;desc = ""
+    for i in range(0, blob.size()):
+        try:
+            if i == next: #guid_len
+                guid_len = int(blob.at(i))
+                guid = str(blob.mid(i+1, guid_len))
+            elif i == (next + 1 + guid_len + 1):
+                name_len = int(blob.at(i))
+                name = str(blob.mid(i+1, name_len))
+            elif i == (next + 1 + guid_len + 1 + name_len + 2):
+                url_len = int(blob.at(i))
+                url = str(blob.mid(i+1, url_len))
+                filename = url.rsplit('/', 1)[1]
+            elif i == (next + 1 + guid_len + 1 + name_len + 2 + url_len + 2):
+                desc_len = int(blob.at(i))
+                desc = str(blob.mid(i+1, desc_len))
+                ret[guid] = {"name": name, "url": url, "filename": filename, "description": desc}
+                next = (next + guid_len + 2 + name_len + 2 + url_len + 2 + desc_len + 13)
+            delimiter = blob.mid(0, 12)
+        except:
+            ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
+            pass
+    return ret, blob
+
+
+def loadBadges():
+    """
+    Loads Badges from ts3settings.db
+    :return: int(timestamp), str(ret), dict(badges)
+    """
+    db = ts3client.Config()
+    q = db.query("SELECT * FROM Badges") #  WHERE key = BadgesListData
+    timestamp = 0
+    ret = {}
+    badges = QByteArray()
+    while q.next():
+        key = q.value("key")
+        if key == "BadgesListTimestamp":
+            timestamp = q.value("value")
+        elif key == "BadgesListData":
+            ret, badges = parseBadgesBlob(q.value("value"))
+    del db
+    return timestamp, ret, badges
+
+def parseBadges(client_badges):
+    """
+    Parses a string of badges.
+    :param client_badges:
+    :return: tuple(overwolf, dict(badges))
+    """
+    overwolf = None
+    badges = []
+    if "verwolf=" in client_badges and "badges=" in client_badges:
+        client_badges = client_badges.split(":",1)
+        overwolf = bool(int(client_badges[0].split("=",1)[1]))
+        badges = client_badges[1].split("=",1)[1].replace(":badges=", ",").split(",")
+    elif "verwolf=" in client_badges:
+        overwolf = bool(int(client_badges.split("=")[1]))
+    elif "badges=" in client_badges:
+        badges = client_badges.split("=",1)[1].replace(":badges=", ",").split(",")
+    return overwolf, badges
+
 # Helper Classes & Stuff
+
+class network(object):
+    nwmc = QNetworkAccessManager()
+    dlpath = {}
+    def downloadFile(self, url, path):
+        """
+        :param url:
+        :param path:
+        """
+        self.nwmc.connect("finished(QNetworkReply*)", self._downloadFileReply)
+        self.dlpath[url] = path
+        self.nwmc.get(QNetworkRequest(QUrl(url)))
+    def _downloadFileReply(self, reply):
+        #save to file
+        er = reply.error()
+        if er == QNetworkReply.NoError:
+            data = reply.readAll()
+            if data.isEmpty():
+                return
+            url = str(reply.url().toString())
+            self.saveDataToFile(self.dlpath[url], data)
+            self.dlpath[url] = ""
+            
+    def saveDataToFile(self, path, data):
+        with open(path, 'wb') as file:
+            file.write(data.data())            
+
 class ServerTreeItemType:
     UNKNOWN = 0
     SERVER = 1
@@ -983,6 +1095,25 @@ class NewTreeDelegate(QStyledItemDelegate):
         self.schid = schid
         self.objs = {}
 
+        self.network = network()
+
+        #read badges from settings.db
+        self.badgePath = os.path.join(ts3lib.getConfigPath(), "cache", "badges")
+        self.badges = loadBadges()[1]
+        #read/download external badges
+        self.badgesExtRemote = "https://raw.githubusercontent.com/R4P3-NET/CustomBadges/master/badges.json"
+        self.externalBadges = {}
+        self.externalBadgePath = os.path.join(self.badgePath, "badges.json")
+        if not os.path.exists(self.externalBadgePath):
+            self.downloadExtBadges()
+        else:
+            self.readExtBadges()
+
+        self.downloadedBadges = {}
+
+        #Get Options from settings.db
+        self.options = getOptions()
+
         try:
             self.icons = ts3client.ServerCache(self.schid)
 
@@ -1109,8 +1240,7 @@ class NewTreeDelegate(QStyledItemDelegate):
         elif type(obj) is Client:
             #TODO: isWhisperTarget
             #ret.append(QIcon(self.iconpack.icon("ON_WHISPERLIST")))
-            #TODO: badges
-            """
+            # badges
             overwolf, badges = parseBadges(obj.badges)
             for badgeUuid in badges:
                 #normal ts badge
@@ -1133,7 +1263,6 @@ class NewTreeDelegate(QStyledItemDelegate):
                         self.network.downloadFile("https://raw.githubusercontent.com/R4P3-NET/CustomBadges/master/img/{}".format(badge["filename"]), filePath)
                         self.downloadedBadges[badgeUuid] = True
                     ret.append(QIcon(filePath))
-            """
             # priority speaker
             if obj.isPrioritySpeaker:
                 ret.append(QIcon(self.iconpack.icon("CAPTURE")))
@@ -1174,13 +1303,28 @@ class NewTreeDelegate(QStyledItemDelegate):
             #if self.options["EnableOverwolfIcons"] == "1" and overwolf == 1:
                 #ret.append()
             # flag
-            #if self.options["EnableCountryFlags"] == "1" and obj.country != "":
-            #    ret.append(QIcon(self.countries.flag(obj.country)))
+            if self.options["EnableCountryFlags"] == "1" and obj.country != "":
+                ret.append(QIcon(self.countries.flag(obj.country)))
         else:
             assert type(obj) is Server
             if obj.iconID != 0:
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
         return ret
+
+    def downloadExtBadges(self):
+        self.network.nwmc.connect("finished(QNetworkReply*)", self._loadExtBadges)
+        self.network.nwmc.get(QNetworkRequest(QUrl(self.badgesExtRemote)))
+
+    def _loadExtBadges(self, reply):
+        if reply.error() == QNetworkReply.NoError:
+            data = reply.readAll()
+            self.externalBadges = loads(data.data().decode('utf-8'))
+            self.network.saveDataToFile(self.externalBadgePath, data)
+        self.network.nwmc.disconnect("finished(QNetworkReply*)", self._loadExtBadges)
+
+    def readExtBadges(self):
+        with open(self.externalBadgePath, 'r') as f:
+            self.externalBadges = load(f)
 
 def findChildWidget(widget, checkfunc, recursive):
     for c in widget.children():
