@@ -214,12 +214,12 @@ class Channel(object):
     def _updateSpacer(self):
         done = False
         if self.isPermanent:
-            m = re.match(r'\[([clr\*]*)spacer\d*](.*)', self.name)
+            m = re.match(r'\[([clr\*]*)spacer.*](.*)', self.name)
             if m:
                 self.cache["isSpacer"] = True
 
                 al = m.group(1)
-                if al == "l":
+                if al == "l" or al == "": #[spacer] gets handled as a [lspacer]
                     self.cache["spacerAlignment"] = Qt.AlignLeft
                 elif al == "r":
                     self.cache["spacerAlignment"] = Qt.AlignRight
@@ -227,7 +227,7 @@ class Channel(object):
                     self.cache["spacerAlignment"] = Qt.AlignHCenter
                 elif al == "*":
                     self.cache["spacerAlignment"] = Qt.AlignJustify
-                #FIXME: not sure what happens if we have a [spacer] cuz maybe no group1?; but currently no problems
+                
                 st = m.group(2)
                 self.cache["spacerCustomtext"] = ""
                 if st == "___":
