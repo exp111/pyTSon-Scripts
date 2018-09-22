@@ -1213,12 +1213,10 @@ class NewTreeDelegate(QStyledItemDelegate):
 
     def paint(self, painter, option, index):
         try:
-            #if option.state & QStyle.State_MouseOver and option.state & ~QStyle.State_MouseOver:
-            #    painter.fillRect(option.rect, option.palette.highlight()) #FIXME: get original color here too
-
             #self.parent().children()[5].paint(painter, option, index)
-            if option.state & QStyle.State_Selected:
-                painter.fillRect(option.rect, option.palette.highlight()) #FIXME: get original color of theme
+            
+            #Just let the style of the parent (I guess stylesheet) draw the states (selected, hovered)
+            self.parent().style().drawControl(QStyle.CE_ItemViewItem, option, painter, option.widget)
 
             if not index.isValid():
                 super().paint(painter, option, index)
