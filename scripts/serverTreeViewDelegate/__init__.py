@@ -1216,6 +1216,7 @@ class NewTreeDelegate(QStyledItemDelegate):
             #if option.state & QStyle.State_MouseOver and option.state & ~QStyle.State_MouseOver:
             #    painter.fillRect(option.rect, option.palette.highlight()) #FIXME: get original color here too
 
+            #self.parent().children()[5].paint(painter, option, index)
             if option.state & QStyle.State_Selected:
                 painter.fillRect(option.rect, option.palette.highlight()) #FIXME: get original color of theme
 
@@ -1245,7 +1246,7 @@ class NewTreeDelegate(QStyledItemDelegate):
                 iconsize = option.decorationSize
 
             headerRect = option.rect
-            headerRect.setLeft(headerRect.left() + iconsize.width() + 5)
+            headerRect.setLeft(headerRect.left() + iconsize.width() + 9)
 
             painter.save()
 
@@ -1256,13 +1257,13 @@ class NewTreeDelegate(QStyledItemDelegate):
             if font:
                 painter.setFont(font)
 
-            painter.drawText(headerRect, Qt.AlignLeft, index.data())
+            painter.drawText(headerRect.x(), headerRect.y() + 1, headerRect.width(), headerRect.height(), Qt.AlignLeft, index.data())
 
-            nextx = 18
+            nextx = 17
             if statusicons:
                 for ico in reversed(statusicons): #FIXME: check here if icon exists else don't draw
                     ico.paint(painter, option.rect.right() - nextx,
-                                option.rect.center().y() - iconsize.height() / 2, iconsize.width(), iconsize.height())
+                                option.rect.center().y() - iconsize.height() / 2 + 1, iconsize.width(), iconsize.height())
                     nextx += 18
                     
             painter.restore()
