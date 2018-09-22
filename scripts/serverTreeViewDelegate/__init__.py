@@ -1,6 +1,6 @@
 import os
 
-from ts3plugin import ts3plugin
+from ts3plugin import ts3plugin, PluginHost
 
 import ts3lib, ts3defines, ts3client
 import re
@@ -18,6 +18,22 @@ from PythonQt.pytson import EventFilterObject
 from PythonQt.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 # Helper Functions
+def _errprint(msg, errcode, aid, secid=None):
+    if secid:
+        err = ts3lib.logMessage("%s (%s): %s" % (msg, secid, errcode),
+                                ts3defines.LogLevel.LogLevel_ERROR,
+                                "pyTSon.ts3widgets", aid)
+    else:
+        err = ts3lib.logMessage("%s: %s" % (msg, errcode),
+                                ts3defines.LogLevel.LogLevel_ERROR,
+                                "pyTSon.ts3widgets", aid)
+
+    if err != ts3defines.ERROR_ok:
+        if secid:
+            print("%s (%s, %s): %s" % (msg, aid, secid, errcode))
+        else:
+            print("%s (%s): %s" % (msg, aid, errcode))
+
 def getClientIDByName(name:str, schid:int=0, use_displayname:bool=False, multi:bool=False):
     if not schid: schid = ts3lib.getCurrentServerConnectionHandlerID()
     if multi: results = []
@@ -1094,6 +1110,10 @@ class NewTreeDelegate(QStyledItemDelegate):
         super().__init__(parent)
         self.schid = schid
         self.objs = {}
+        self.channels = {}
+        self.clients = {}
+
+        self.myid = -1
 
         self.network = network()
 
@@ -1131,8 +1151,37 @@ class NewTreeDelegate(QStyledItemDelegate):
         except Exception as e:
                 self.delete()
                 raise e
+        self.cgicons = {}
+        self.sgicons = {}
 
-        #TODO: set proxy thingy to get ts callbacks
+        #set proxy thingy to get ts callbacks
+        PluginHost.registerCallbackProxy(self)
+
+        self._reload()
+
+    def __del__(self):
+        PluginHost.unregisterCallbackProxy(self)
+        self.objs = {}
+        self.channels = {}
+        self.clients = {}
+
+        if self.iconpackcreated:
+            self.iconpack.close()
+
+        self.countries.close()
+
+    def _reload(self):
+        err, self.myid = ts3lib.getClientID(self.schid)
+
+        err = ts3lib.requestServerGroupList(self.schid)
+        if err != ts3defines.ERROR_ok:
+            _errprint("Error requesting servergrouplist", err, self.schid)
+        err = ts3lib.requestChannelGroupList(self.schid)
+        if err != ts3defines.ERROR_ok:
+            _errprint("Error requesting channelgroups", err, self.schid)
+
+        self.allchans = {}
+        self.objs = {}
 
     def _paintSpacer(self, painter, option, index, obj):
         st = obj.spacerType
@@ -1221,7 +1270,11 @@ class NewTreeDelegate(QStyledItemDelegate):
 
     def getObject(self, name):
         if not name in self.objs or not self.objs[name]:
-            self.objs[name] = getObjectByName(name, self.schid)
+            self.objs[name] = getObjectByName(name, self.schid) #FIXME: what if someone is named like a channel?
+            if type(self.objs[name]) is Client:
+                self.clients[self.objs[name].clid] = self.objs[name]
+            elif type(self.objs[name]) is Channel:
+                self.channels[self.objs[name].cid] = self.objs[name]
         return self.objs[name]
 
     def statusIcons(self, obj):
@@ -1272,17 +1325,14 @@ class NewTreeDelegate(QStyledItemDelegate):
                 ret.append(QIcon(self.iconpack.icon("IS_TALKER")))
             elif obj.talkPower < parentChannel.neededTalkPower:
                 ret.append(QIcon(self.iconpack.icon("INPUT_MUTED")))
-            #TODO: channelgroup
-            """
+            # channelgroup
             if obj.channelGroup in self.cgicons:
                 cgID = self.cgicons[obj.channelGroup]
                 if cgID in range(100, 700, 100):
                     ret.append(QIcon(self.iconpack.icon("group_{}".format(cgID))))
                 else:
                     ret.append(QIcon(self.icons.icon(cgID)))
-            """
-            #TODO: servergroups
-            """
+            # servergroups
             for sg in obj.serverGroups:
                 if sg in self.sgicons:
                     sgID = self.sgicons[sg]
@@ -1292,7 +1342,6 @@ class NewTreeDelegate(QStyledItemDelegate):
                         ret.append(QIcon(self.iconpack.icon("group_{}".format(sgID))))
                     else:
                         ret.append(QIcon(self.icons.icon(sgID)))
-            """
             # clienticon
             if obj.iconID != 0:
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
@@ -1311,6 +1360,7 @@ class NewTreeDelegate(QStyledItemDelegate):
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
         return ret
 
+    # external badge stuff
     def downloadExtBadges(self):
         self.network.nwmc.connect("finished(QNetworkReply*)", self._loadExtBadges)
         self.network.nwmc.get(QNetworkRequest(QUrl(self.badgesExtRemote)))
@@ -1325,6 +1375,38 @@ class NewTreeDelegate(QStyledItemDelegate):
     def readExtBadges(self):
         with open(self.externalBadgePath, 'r') as f:
             self.externalBadges = load(f)
+    
+    #ts3 proxy stuff #TODO: add some more callbacks like kick etc
+    def onUpdateClientEvent(self, schid, clientID, invokerID, invokerName,
+                            invokerUniqueIdentifier):
+        if schid != self.schid:
+            return
+
+        client = self.clients[clientID]
+        client.update()
+
+    def onServerGroupListEvent(self, schid, serverGroupID, name, atype, iconID,
+                               saveDB):
+        if schid != self.schid:
+            return
+
+        if iconID != 0:
+            if iconID < 0:
+                iconID = pow(2, 32) + iconID
+
+            self.sgicons[serverGroupID] = iconID
+
+    def onChannelGroupListEvent(self, schid, channelGroupID, name, atype,
+                                iconID, saveDB):
+        if schid != self.schid:
+            return
+
+        if iconID != 0:
+            if iconID < 0:
+                iconID = pow(2, 32) + iconID
+
+            self.cgicons[channelGroupID] = iconID
+
 
 def findChildWidget(widget, checkfunc, recursive):
     for c in widget.children():
