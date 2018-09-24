@@ -16,6 +16,7 @@ from PythonQt.QtGui import (QApplication, QDialog, QAbstractItemView,
 from PythonQt.QtCore import Qt, QEvent, QTimer, QMimeData, QModelIndex, QByteArray
 from PythonQt.pytson import EventFilterObject
 from PythonQt.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+import pycountry
 
 # Helper Functions
 def _errprint(msg, errcode, aid, secid=None):
@@ -1434,10 +1435,10 @@ class NewTreeDelegate(QStyledItemDelegate):
             if self.options["EnableOverwolfIcons"] == "1" and overwolf == 1:
                 ret.append(QIcon(self.overwolfPath))
                 desc.append(self.oldDelegate.tr("Using Overwolf"))
-            # flag #TODO: tooltips
+            # flag
             if self.options["EnableCountryFlags"] == "1" and obj.country != "":
                 ret.append(QIcon(self.countries.flag(obj.country)))
-                desc.append("")
+                desc.append(pycountry.countries.get(alpha_2=obj.country.upper()).name)
         else:
             assert type(obj) is Server
             if obj.iconID != 0:
