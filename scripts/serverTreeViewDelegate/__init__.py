@@ -1321,7 +1321,7 @@ class NewTreeDelegate(QStyledItemDelegate):
             #ret.append(QIcon(self.iconpack.icon("ON_WHISPERLIST")))
             # badges
             overwolf, badges = parseBadges(obj.badges)
-            for badgeUuid in badges:
+            for badgeUuid in badges: #TODO: badge descriptions
                 #normal ts badge
                 if badgeUuid in self.badges:
                     badge = self.badges[badgeUuid]
@@ -1409,7 +1409,25 @@ class NewTreeDelegate(QStyledItemDelegate):
             return
 
         client = self.clients[clientID]
+        oldName = client.name
         client.update()
+        newName = client.name
+        if oldName != newName:
+            self.clients.pop(oldName)
+            self.clients[newName] = client
+
+    def onUpdateChannelEditedEvent(self, schid, cid, invokerID, invokerName,
+                                   invokerUniqueIdentifier):
+        if schid != self.schid:
+            return
+
+        channel = self.channels[cid]
+        oldName = channel.name
+        channel.update()
+        newName = channel.name
+        if oldName != newName:
+            self.channels.pop(oldName)
+            self.channels[newName] = channel
 
     def onServerGroupListEvent(self, schid, serverGroupID, name, atype, iconID,
                                saveDB):
