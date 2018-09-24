@@ -1200,7 +1200,7 @@ class NewTreeDelegate(QStyledItemDelegate):
             ctext = obj.spacerCustomtext
 
             if align != Qt.AlignJustify:
-                painter.drawText(option.rect.x(), option.rect.y(),
+                painter.drawText(option.rect.x(), option.rect.y() + 1,
                                  option.rect.width(), option.rect.height(),
                                  align, ctext)
             else:
@@ -1218,7 +1218,7 @@ class NewTreeDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         try:
             #self.parent().children()[5].paint(painter, option, index)
-            
+
             #Just let the style of the parent (I guess stylesheet) draw the states (selected, hovered)
             self.parent().style().drawControl(QStyle.CE_ItemViewItem, option, painter, option.widget)
 
@@ -1308,13 +1308,13 @@ class NewTreeDelegate(QStyledItemDelegate):
         if type(obj) is Channel:
             if obj.isDefault:
                 ret.append(QIcon(self.iconpack.icon("DEFAULT")))
-            if obj.isPasswordProtected:
+            if obj.isPasswordProtected: #TODO: tooltip
                 ret.append(QIcon(self.iconpack.icon("REGISTER")))
             if obj.codec == ts3defines.CodecType.CODEC_OPUS_MUSIC or obj.codec == ts3defines.CodecType.CODEC_CELT_MONO:
-                ret.append(QIcon(self.iconpack.icon("MUSIC")))
-            if obj.neededTalkPower > 0:
+                ret.append(QIcon(self.iconpack.icon("MUSIC"))) #TODO: tooltip ("Music Codec")
+            if obj.neededTalkPower > 0: #TODO: tooltip
                 ret.append(QIcon(self.iconpack.icon("MODERATED")))
-            if obj.iconID != 0:
+            if obj.iconID != 0: #TODO: tooltip ("Channel Icon")
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
         elif type(obj) is Client:
             #TODO: isWhisperTarget
@@ -1351,14 +1351,14 @@ class NewTreeDelegate(QStyledItemDelegate):
                 ret.append(QIcon(self.iconpack.icon("IS_TALKER")))
             elif obj.talkPower < parentChannel.neededTalkPower:
                 ret.append(QIcon(self.iconpack.icon("INPUT_MUTED")))
-            # channelgroup
+            # channelgroup #TODO: tooltips
             if obj.channelGroup in self.cgicons:
                 cgID = self.cgicons[obj.channelGroup]
                 if cgID in range(100, 700, 100):
                     ret.append(QIcon(self.iconpack.icon("group_{}".format(cgID))))
                 else:
                     ret.append(QIcon(self.icons.icon(cgID)))
-            # servergroups
+            # servergroups #TODO: tooltips
             for sg in obj.serverGroups:
                 if sg in self.sgicons:
                     sgID = self.sgicons[sg]
@@ -1368,21 +1368,21 @@ class NewTreeDelegate(QStyledItemDelegate):
                         ret.append(QIcon(self.iconpack.icon("group_{}".format(sgID))))
                     else:
                         ret.append(QIcon(self.icons.icon(sgID)))
-            # clienticon
+            # clienticon #TODO: tooltips
             if obj.iconID != 0:
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
             # talkrequest
             if obj.isRequestingTalkPower:
                 ret.append(QIcon(self.iconpack.icon("REQUEST_TALK_POWER")))
-            # overwolf
+            # overwolf #TODO: tooltips
             if self.options["EnableOverwolfIcons"] == "1" and overwolf == 1:
                 ret.append(QIcon(self.overwolfPath))
-            # flag
+            # flag #TODO: tooltips
             if self.options["EnableCountryFlags"] == "1" and obj.country != "":
                 ret.append(QIcon(self.countries.flag(obj.country)))
         else:
             assert type(obj) is Server
-            if obj.iconID != 0:
+            if obj.iconID != 0: #TODO: tooltip ("Server Icon")
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
         return ret
 
