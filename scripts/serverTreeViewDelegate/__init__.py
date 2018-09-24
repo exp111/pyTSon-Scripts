@@ -190,8 +190,8 @@ class network(object):
             self.dlpath[url] = ""
             
     def saveDataToFile(self, path, data):
-        with open(path, 'wb') as file:
-            file.write(data.data())            
+        with open(path, 'wb') as f:
+            f.write(data.data())            
 
 class ServerTreeItemType:
     UNKNOWN = 0
@@ -556,7 +556,7 @@ class Channel(object):
     def count(self):
         return len(self.clients) + len(self.subchans)
 
-    def child(self, row): #TODO: sortorder
+    def child(self, row): # sortorder
         if Channel.sortClientsAfterChannels:
             if row >= len(self.subchans):
                 return self.clients[row - len(self.subchans)]
@@ -584,7 +584,7 @@ class Channel(object):
 
         self.subchans = newsubchans
 
-    def __iter__(self): #TODO: sortorder
+    def __iter__(self): # sortorder
         if Channel.sortClientsAfterChannels:
             for c in self.subchans:
                 yield c
@@ -1130,6 +1130,12 @@ class NewTreeDelegate(QStyledItemDelegate):
 
         self.downloadedBadges = {}
 
+        # check/write overwolf file
+        self.overwolfPath = os.path.join(self.badgePath, "overwolf.svg")
+        if not os.path.exists(self.overwolfPath):
+            with open(self.overwolfPath, 'w') as f:
+                f.write("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 40\">\r\n <title>Overwolf logo</title>\r\n <path d=\"M15.79,10.66,8.4,5l1,11.59L6.31,21,7.74,25.2a13.9,13.9,0,0,1,4.1,2.46c.15-1.23.41-3.16.6-4l-2.39.49A31,31,0,0,1,15.79,10.66ZM18.3,22l-5.7-2.86C13.84,22.17,14.25,22.6,18.3,22Zm12.28-5.39L31.6,5c-7,5.33-9.23,6.13-11.85,12.71l3.61-.7a29.16,29.16,0,0,0-7.73,15.9l.9,2.08h6.93c1.08-2.48,2.71-7.47,8.79-9.8L33.69,21ZM20,32.29l-2.54-3.71h5.08ZM21.62,22l5.7-2.86C26.08,22.17,25.67,22.6,21.62,22Z\"/>\r\n</svg>\r\n")  
+
         #Get Options from settings.db
         self.options = getOptions()
 
@@ -1368,9 +1374,9 @@ class NewTreeDelegate(QStyledItemDelegate):
             # talkrequest
             if obj.isRequestingTalkPower:
                 ret.append(QIcon(self.iconpack.icon("REQUEST_TALK_POWER")))
-            #TODO: overwolf
-            #if self.options["EnableOverwolfIcons"] == "1" and overwolf == 1:
-                #ret.append()
+            # overwolf
+            if self.options["EnableOverwolfIcons"] == "1" and overwolf == 1:
+                ret.append(QIcon(self.overwolfPath))
             # flag
             if self.options["EnableCountryFlags"] == "1" and obj.country != "":
                 ret.append(QIcon(self.countries.flag(obj.country)))
