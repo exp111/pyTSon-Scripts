@@ -12,7 +12,7 @@ from PythonQt.QtGui import (QApplication, QDialog, QAbstractItemView,
                             QTreeView, QHBoxLayout, QItemSelection,
                             QItemSelectionModel, QTextDocument, QWidget, 
                             QInputDialog, QLineEdit, QStyledItemDelegate,
-                            QStyle, QFontMetrics, QIcon)
+                            QStyle, QFontMetrics, QIcon, QToolTip)
 from PythonQt.QtCore import Qt, QEvent, QTimer, QMimeData, QModelIndex, QByteArray
 from PythonQt.pytson import EventFilterObject
 from PythonQt.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
@@ -1225,11 +1225,7 @@ class NewTreeDelegate(QStyledItemDelegate):
             if not index.isValid():
                 return
 
-            name = index.data(Qt.EditRole)
-            mimeData = index.model().mimeData([index])
-            mimeFormat = mimeData.formats()
-            isClient = "ts3/treeitem_client" in mimeFormat
-            obj = self.getObject(name, isClient)
+            obj = self.getObjectByIndex(index)
             if not obj:
                 return
 
@@ -1237,7 +1233,7 @@ class NewTreeDelegate(QStyledItemDelegate):
             font = index.data(Qt.FontRole)
             brush = index.data(Qt.TextColorRole)
             if obj:
-                statusicons = self.statusIcons(obj)
+                statusicons, desc = self.statusIcons(obj)
                 if type(obj) is Channel and obj.isSpacer:
                     self._paintSpacer(painter, option, index, obj)
                     return
@@ -1303,19 +1299,57 @@ class NewTreeDelegate(QStyledItemDelegate):
                 obj = self.channels[name]
         return obj
 
+    def getObjectByIndex(self, index):
+        name = index.data(Qt.EditRole)
+        mimeData = index.model().mimeData([index])
+        mimeFormat = mimeData.formats()
+        isClient = "ts3/treeitem_client" in mimeFormat
+        return self.getObject(name, isClient)
+
+    def helpEvent(self, event, view, option, index): #tooltip
+        try:
+            if not index.isValid() or event.type() != QEvent.ToolTip:
+                return False
+
+            obj = self.getObjectByIndex(index)
+            statusicons, desc = self.statusIcons(obj)
+
+            nextx = 17
+            if statusicons:
+                i = len(statusicons)
+                for ico in reversed(statusicons):
+                    i -= 1
+                    start = option.rect.right() - nextx
+                    dif = event.x() - start
+                    isSelected = dif > 0 and dif < 18
+                    if isSelected:
+                        break
+                    nextx += 18
+                if i > -1 and len(desc) > i:
+                    ts3lib.printMessageToCurrentTab(desc[i])
+                    QToolTip.showText(event.globalPos(), desc[i])
+            return True
+        except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
+
     def statusIcons(self, obj):
         ret = []
+        desc = []
         if type(obj) is Channel:
-            if obj.isDefault:
+            if obj.isDefault: #TODO: tooltip
                 ret.append(QIcon(self.iconpack.icon("DEFAULT")))
+                desc.append("")
             if obj.isPasswordProtected: #TODO: tooltip
                 ret.append(QIcon(self.iconpack.icon("REGISTER")))
+                desc.append("")
             if obj.codec == ts3defines.CodecType.CODEC_OPUS_MUSIC or obj.codec == ts3defines.CodecType.CODEC_CELT_MONO:
-                ret.append(QIcon(self.iconpack.icon("MUSIC"))) #TODO: tooltip ("Music Codec")
+                ret.append(QIcon(self.iconpack.icon("MUSIC")))
+                desc.append("Music Codec")
             if obj.neededTalkPower > 0: #TODO: tooltip
                 ret.append(QIcon(self.iconpack.icon("MODERATED")))
-            if obj.iconID != 0: #TODO: tooltip ("Channel Icon")
+                desc.append("")
+            if obj.iconID != 0:
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
+                desc.append("Channel Icon")
         elif type(obj) is Client:
             #TODO: isWhisperTarget
             #ret.append(QIcon(self.iconpack.icon("ON_WHISPERLIST")))
@@ -1332,6 +1366,7 @@ class NewTreeDelegate(QStyledItemDelegate):
                         self.network.downloadFile("{}.svg".format(badge["url"]), filePath)
                         self.downloadedBadges[badgeUuid] = True
                     ret.append(QIcon(filePath))
+                    desc.append(badge["description"])
                 #external badges
                 if badgeUuid in self.externalBadges:
                     badge = self.externalBadges[badgeUuid]
@@ -1342,22 +1377,27 @@ class NewTreeDelegate(QStyledItemDelegate):
                         self.network.downloadFile("https://raw.githubusercontent.com/R4P3-NET/CustomBadges/master/img/{}".format(badge["filename"]), filePath)
                         self.downloadedBadges[badgeUuid] = True
                     ret.append(QIcon(filePath))
+                    desc.append(badge["description"])
             # priority speaker
             if obj.isPrioritySpeaker:
                 ret.append(QIcon(self.iconpack.icon("CAPTURE")))
+                desc.append("") #TODO: tooltip
             # istalker
             parentChannel = Channel(self.schid, obj.channelID)
-            if obj.isTalker:
+            if obj.isTalker: #TODO: tooltips
                 ret.append(QIcon(self.iconpack.icon("IS_TALKER")))
+                desc.append("")
             elif obj.talkPower < parentChannel.neededTalkPower:
                 ret.append(QIcon(self.iconpack.icon("INPUT_MUTED")))
-            # channelgroup #TODO: tooltips
+                desc.append("")
+            # channelgroup #TODO: tooltip
             if obj.channelGroup in self.cgicons:
                 cgID = self.cgicons[obj.channelGroup]
                 if cgID in range(100, 700, 100):
                     ret.append(QIcon(self.iconpack.icon("group_{}".format(cgID))))
                 else:
                     ret.append(QIcon(self.icons.icon(cgID)))
+                desc.append("")
             # servergroups #TODO: tooltips
             for sg in obj.serverGroups:
                 if sg in self.sgicons:
@@ -1368,23 +1408,29 @@ class NewTreeDelegate(QStyledItemDelegate):
                         ret.append(QIcon(self.iconpack.icon("group_{}".format(sgID))))
                     else:
                         ret.append(QIcon(self.icons.icon(sgID)))
-            # clienticon #TODO: tooltips
+                    desc.append("")
+            # clienticon #TODO: tooltip
             if obj.iconID != 0:
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
+                desc.append("")
             # talkrequest
-            if obj.isRequestingTalkPower:
+            if obj.isRequestingTalkPower: #TODO: tooltip
                 ret.append(QIcon(self.iconpack.icon("REQUEST_TALK_POWER")))
-            # overwolf #TODO: tooltips
+                desc.append("")
+            # overwolf #TODO: tooltip
             if self.options["EnableOverwolfIcons"] == "1" and overwolf == 1:
                 ret.append(QIcon(self.overwolfPath))
+                desc.append("Overwolf")
             # flag #TODO: tooltips
             if self.options["EnableCountryFlags"] == "1" and obj.country != "":
                 ret.append(QIcon(self.countries.flag(obj.country)))
+                desc.append("")
         else:
             assert type(obj) is Server
-            if obj.iconID != 0: #TODO: tooltip ("Server Icon")
+            if obj.iconID != 0:
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
-        return ret
+                desc.append("Server Icon")
+        return ret, desc
 
     # external badge stuff
     def downloadExtBadges(self):
