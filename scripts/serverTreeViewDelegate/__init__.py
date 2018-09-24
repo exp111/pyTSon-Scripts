@@ -1112,7 +1112,7 @@ class NewTreeDelegate(QStyledItemDelegate):
         self.channels = {}
         self.clients = {}
 
-        self.oldDelegate = parent.itemDelegate()
+        self.oldDelegate = parent.itemDelegate() #FIXME: maybe use pytson.tr("TreeDelegate", ...) instead
 
         self.myid = -1
 
@@ -1391,12 +1391,12 @@ class NewTreeDelegate(QStyledItemDelegate):
                 desc.append(self.oldDelegate.tr("Priority speaker"))
             # istalker
             parentChannel = Channel(self.schid, obj.channelID)
-            if obj.isTalker: #TODO: tooltips
+            if obj.isTalker:
                 ret.append(QIcon(self.iconpack.icon("IS_TALKER")))
-                desc.append("")
+                desc.append(self.oldDelegate.tr("Talk Power granted")) #TODO: check if this is correct
             elif obj.talkPower < parentChannel.neededTalkPower:
                 ret.append(QIcon(self.iconpack.icon("INPUT_MUTED")))
-                desc.append("")
+                desc.append(self.oldDelegate.tr("Insufficient Talk power"))
             # channelgroup
             if obj.channelGroup in self.cgicons:
                 cgID = self.cgicons[obj.channelGroup]
