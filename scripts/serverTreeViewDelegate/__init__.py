@@ -57,22 +57,22 @@ def getChannelIDByName(name:str, schid:int=0, multi:bool=False):
             else: return cid
     if multi and len(results): return results
 
-def getIDByName(name:str, schid:int=0):
+def getIDByName(name:str, schid:int=0, isClient=False):
     if not schid: schid = ts3lib.getCurrentServerConnectionHandlerID()
     err, sname = ts3lib.getServerVariable(schid, ts3defines.VirtualServerProperties.VIRTUALSERVER_NAME)
-    if sname == name: return 0, ServerTreeItemType.SERVER
+    if not isClient and sname == name: return 0, ServerTreeItemType.SERVER
     cid = getChannelIDByName(name, schid)
-    if cid: return cid, ServerTreeItemType.CHANNEL
+    if not isClient and cid: return cid, ServerTreeItemType.CHANNEL
     clid = getClientIDByName(name, schid, use_displayname=True)
     if clid: return clid, ServerTreeItemType.CLIENT
     return 0, ServerTreeItemType.UNKNOWN
 
-def getObjectByName(name:str, schid:int=0):
+def getObjectByName(name:str, schid:int=0, isClient=False):
     if not schid: schid = ts3lib.getCurrentServerConnectionHandlerID()
-    ID, Type = getIDByName(name, schid)
-    if Type == ServerTreeItemType.SERVER:
+    ID, Type = getIDByName(name, schid, isClient)
+    if not isClient and Type == ServerTreeItemType.SERVER:
         return Server(schid)
-    elif Type == ServerTreeItemType.CHANNEL:
+    elif not isClient and Type == ServerTreeItemType.CHANNEL:
         return Channel(schid, ID)
     elif Type == ServerTreeItemType.CLIENT:
         err, clid = ts3lib.getClientID(schid)
@@ -1109,7 +1109,6 @@ class NewTreeDelegate(QStyledItemDelegate):
     def __init__(self, schid, parent):
         super().__init__(parent)
         self.schid = schid
-        self.objs = {}
         self.channels = {}
         self.clients = {}
 
@@ -1161,7 +1160,6 @@ class NewTreeDelegate(QStyledItemDelegate):
 
     def __del__(self):
         PluginHost.unregisterCallbackProxy(self)
-        self.objs = {}
         self.channels = {}
         self.clients = {}
 
@@ -1180,8 +1178,8 @@ class NewTreeDelegate(QStyledItemDelegate):
         if err != ts3defines.ERROR_ok:
             _errprint("Error requesting channelgroups", err, self.schid)
 
-        self.allchans = {}
-        self.objs = {}
+        self.channels = {}
+        self.clients = {}
 
     def _paintSpacer(self, painter, option, index, obj):
         st = obj.spacerType
@@ -1219,20 +1217,23 @@ class NewTreeDelegate(QStyledItemDelegate):
             self.parent().style().drawControl(QStyle.CE_ItemViewItem, option, painter, option.widget)
 
             if not index.isValid():
-                super().paint(painter, option, index)
                 return
 
             name = index.data(Qt.EditRole)
-            obj = self.getObject(name)
+            mimeData = index.model().mimeData([index])
+            mimeFormat = mimeData.formats()
+            isClient = "ts3/treeitem_client" in mimeFormat
+            obj = self.getObject(name, isClient)
+            if not obj:
+                return
 
-            drawName = index.data(Qt.DisplayRole)
             icon = index.data(Qt.DecorationRole)
             font = index.data(Qt.FontRole)
             brush = index.data(Qt.TextColorRole)
-            if self.objs[name]:
-                statusicons = self.statusIcons(self.objs[name])
-                if type(self.objs[name]) is Channel and self.objs[name].isSpacer:
-                    self._paintSpacer(painter, option, index, self.objs[name])
+            if obj:
+                statusicons = self.statusIcons(obj)
+                if type(obj) is Channel and obj.isSpacer:
+                    self._paintSpacer(painter, option, index, obj)
                     return
 
             if icon: #FIXME: icon size
@@ -1267,14 +1268,34 @@ class NewTreeDelegate(QStyledItemDelegate):
             painter.restore()
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
-    def getObject(self, name):
-        if not name in self.objs or not self.objs[name]:
-            self.objs[name] = getObjectByName(name, self.schid) #FIXME: what if someone is named like a channel?
-            if type(self.objs[name]) is Client:
-                self.clients[self.objs[name].clid] = self.objs[name]
-            elif type(self.objs[name]) is Channel:
-                self.channels[self.objs[name].cid] = self.objs[name]
-        return self.objs[name]
+    def getGetObject(self, name, isClient = False):
+        obj = None
+        if isClient:
+            obj = self.clients[name] = getObjectByName(name, self.schid, isClient)
+        else:
+            obj = self.channels[name] = getObjectByName(name, self.schid)
+        if not obj:
+            return None
+        if type(obj) is Client:
+            self.clients[obj.clid] = obj
+        elif type(obj) is Channel:
+            self.channels[obj.cid] = obj
+        return obj
+
+    def getObject(self, name, isClient=False):
+        obj = None
+        if isClient:
+            if not name in self.clients or not self.clients[name]:
+                obj = self.getGetObject(name, isClient)
+        else:
+            if not name in self.channels or not self.channels[name]:
+                obj = self.getGetObject(name)
+        if not obj:
+            if isClient:
+                obj = self.clients[name]
+            else:
+                obj = self.channels[name]
+        return obj
 
     def statusIcons(self, obj):
         ret = []
