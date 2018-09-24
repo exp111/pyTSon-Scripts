@@ -1112,6 +1112,8 @@ class NewTreeDelegate(QStyledItemDelegate):
         self.channels = {}
         self.clients = {}
 
+        self.oldDelegate = parent.itemDelegate()
+
         self.myid = -1
 
         self.network = network()
@@ -1157,7 +1159,9 @@ class NewTreeDelegate(QStyledItemDelegate):
                 self.delete()
                 raise e
         self.cgicons = {}
+        self.cgnames = {}
         self.sgicons = {}
+        self.sgnames = {}
 
         #set proxy thingy to get ts callbacks
         PluginHost.registerCallbackProxy(self)
@@ -1337,27 +1341,28 @@ class NewTreeDelegate(QStyledItemDelegate):
         ret = []
         desc = []
         if type(obj) is Channel:
-            if obj.isDefault: #TODO: tooltip
+            if obj.isDefault:                 
                 ret.append(QIcon(self.iconpack.icon("DEFAULT")))
-                desc.append("")
-            if obj.isPasswordProtected: #TODO: tooltip
+                desc.append(self.oldDelegate.tr("Default channel"))
+            if obj.isPasswordProtected: 
                 ret.append(QIcon(self.iconpack.icon("REGISTER")))
-                desc.append("")
+                desc.append(self.oldDelegate.tr("Password-protected"))
             if obj.codec == ts3defines.CodecType.CODEC_OPUS_MUSIC or obj.codec == ts3defines.CodecType.CODEC_CELT_MONO:
                 ret.append(QIcon(self.iconpack.icon("MUSIC")))
-                desc.append("Music Codec")
-            if obj.neededTalkPower > 0: #TODO: tooltip
+                desc.append(self.oldDelegate.tr("Music codec"))
+            if obj.neededTalkPower > 0:
                 ret.append(QIcon(self.iconpack.icon("MODERATED")))
-                desc.append("")
+                desc.append(self.oldDelegate.tr("Moderated"))
             if obj.iconID != 0:
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
-                desc.append("Channel Icon")
+                desc.append(self.oldDelegate.tr("Channel Icon"))
         elif type(obj) is Client:
             #TODO: isWhisperTarget
             #ret.append(QIcon(self.iconpack.icon("ON_WHISPERLIST")))
+            #desc.append(self.oldDelegate.tr("On whisperlist"))
             # badges
             overwolf, badges = parseBadges(obj.badges)
-            for badgeUuid in badges: #TODO: badge descriptions
+            for badgeUuid in badges:
                 #normal ts badge
                 if badgeUuid in self.badges:
                     badge = self.badges[badgeUuid]
@@ -1383,7 +1388,7 @@ class NewTreeDelegate(QStyledItemDelegate):
             # priority speaker
             if obj.isPrioritySpeaker:
                 ret.append(QIcon(self.iconpack.icon("CAPTURE")))
-                desc.append("") #TODO: tooltip
+                desc.append(self.oldDelegate.tr("Priority speaker"))
             # istalker
             parentChannel = Channel(self.schid, obj.channelID)
             if obj.isTalker: #TODO: tooltips
@@ -1392,15 +1397,18 @@ class NewTreeDelegate(QStyledItemDelegate):
             elif obj.talkPower < parentChannel.neededTalkPower:
                 ret.append(QIcon(self.iconpack.icon("INPUT_MUTED")))
                 desc.append("")
-            # channelgroup #TODO: tooltip
+            # channelgroup
             if obj.channelGroup in self.cgicons:
                 cgID = self.cgicons[obj.channelGroup]
                 if cgID in range(100, 700, 100):
                     ret.append(QIcon(self.iconpack.icon("group_{}".format(cgID))))
                 else:
                     ret.append(QIcon(self.icons.icon(cgID)))
-                desc.append("")
-            # servergroups #TODO: tooltips
+                if obj.channelGroup in self.cgnames:
+                    desc.append("{}{}".format(self.cgnames[obj.channelGroup], self.oldDelegate.tr("%1 [Channel Group]")[2:]))
+                else:
+                    desc.append("")
+            # servergroups
             for sg in obj.serverGroups:
                 if sg in self.sgicons:
                     sgID = self.sgicons[sg]
@@ -1410,19 +1418,22 @@ class NewTreeDelegate(QStyledItemDelegate):
                         ret.append(QIcon(self.iconpack.icon("group_{}".format(sgID))))
                     else:
                         ret.append(QIcon(self.icons.icon(sgID)))
-                    desc.append("")
-            # clienticon #TODO: tooltip
+                    if sg in self.sgnames:
+                        desc.append("{}{}".format(self.sgnames[sg], self.oldDelegate.tr("%1 [Server Group]")[2:]))
+                    else:
+                        desc.append("")
+            # clienticon
             if obj.iconID != 0:
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
-                desc.append("")
+                desc.append(self.oldDelegate.tr("Client Icon"))
             # talkrequest
-            if obj.isRequestingTalkPower: #TODO: tooltip
+            if obj.isRequestingTalkPower:
                 ret.append(QIcon(self.iconpack.icon("REQUEST_TALK_POWER")))
-                desc.append("")
-            # overwolf #TODO: tooltip
+                desc.append(self.oldDelegate.tr("Talk Power requested"))
+            # overwolf
             if self.options["EnableOverwolfIcons"] == "1" and overwolf == 1:
                 ret.append(QIcon(self.overwolfPath))
-                desc.append("Overwolf")
+                desc.append(self.oldDelegate.tr("Using Overwolf"))
             # flag #TODO: tooltips
             if self.options["EnableCountryFlags"] == "1" and obj.country != "":
                 ret.append(QIcon(self.countries.flag(obj.country)))
@@ -1431,7 +1442,7 @@ class NewTreeDelegate(QStyledItemDelegate):
             assert type(obj) is Server
             if obj.iconID != 0:
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
-                desc.append("Server Icon")
+                desc.append(self.oldDelegate.tr("Server Icon"))
         return ret, desc
 
     # external badge stuff
@@ -1487,6 +1498,7 @@ class NewTreeDelegate(QStyledItemDelegate):
                 iconID = pow(2, 32) + iconID
 
             self.sgicons[serverGroupID] = iconID
+        self.sgnames[serverGroupID] = name
 
     def onChannelGroupListEvent(self, schid, channelGroupID, name, atype,
                                 iconID, saveDB):
@@ -1498,6 +1510,7 @@ class NewTreeDelegate(QStyledItemDelegate):
                 iconID = pow(2, 32) + iconID
 
             self.cgicons[channelGroupID] = iconID
+        self.cgnames[channelGroupID] = name
 
 
 def findChildWidget(widget, checkfunc, recursive):
