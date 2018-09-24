@@ -1306,7 +1306,7 @@ class NewTreeDelegate(QStyledItemDelegate):
         isClient = "ts3/treeitem_client" in mimeFormat
         return self.getObject(name, isClient)
 
-    def helpEvent(self, event, view, option, index): #tooltip
+    def helpEvent(self, event, view, option, index): # Tooltip Stuff #return True if handled
         try:
             if not index.isValid() or event.type() != QEvent.ToolTip:
                 return False
@@ -1317,18 +1317,20 @@ class NewTreeDelegate(QStyledItemDelegate):
             nextx = 17
             if statusicons:
                 i = len(statusicons)
+                selectedIndex = -1
                 for ico in reversed(statusicons):
                     i -= 1
                     start = option.rect.right() - nextx
                     dif = event.x() - start
                     isSelected = dif > 0 and dif < 18
                     if isSelected:
+                        selectedIndex = i
                         break
                     nextx += 18
-                if i > -1 and len(desc) > i:
-                    ts3lib.printMessageToCurrentTab(desc[i])
+                if selectedIndex > -1 and len(desc) > selectedIndex:
                     QToolTip.showText(event.globalPos(), desc[i])
-            return True
+                    return True
+            return False
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
     def statusIcons(self, obj):
