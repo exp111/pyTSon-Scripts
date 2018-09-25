@@ -160,6 +160,24 @@ def printMetadata(item, methods=True, signals=True, slots=True, props=True):
         for i in range(meta.propertyCount()):
             print("{}={}".format(i, meta.property(i).name()))
 
+def getSchidOfTab(tabWidget, tabIndex):
+    currentTab = tabWidget.currentIndex
+    if tabIndex >= tabWidget.count or tabIndex < 0:
+        return 0
+    tabWidget.setCurrentIndex(tabIndex)
+    schid = ts3lib.getCurrentServerConnectionHandlerID()
+    tabWidget.setCurrentIndex(currentTab)
+    return schid
+
+def getTabOfSchid(schid):
+    treeWidget = [item for item in self.allWidgets() if item.objectName == "ServerTreeView"][0]
+    tabWidget = treeWidget.parent().parent()
+    for i=0 in range(tabWidget.count):
+        tabSchid = getSchidOfTab(i)
+        if tabSchid == schid:
+            return i
+    return 0
+
 self = QApplication.instance()
 tree = [item for item in self.allWidgets() if item.objectName == "ServerTreeView"][0]
 tree.setAnimated(True)
