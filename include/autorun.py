@@ -172,11 +172,11 @@ def getSchidOfTab(tabWidget, tabIndex):
 def getTabOfSchid(schid):
     treeWidget = [item for item in self.allWidgets() if item.objectName == "ServerTreeView"][0]
     tabWidget = treeWidget.parent().parent()
-    for i=0 in range(tabWidget.count):
-        tabSchid = getSchidOfTab(i)
+    for i in range(tabWidget.count):
+        tabSchid = getSchidOfTab(tabWidget, i)
         if tabSchid == schid:
-            return i
-    return 0
+            return tabWidget.widget(i)
+    return None
 
 self = QApplication.instance()
 tree = [item for item in self.allWidgets() if item.objectName == "ServerTreeView"][0]
