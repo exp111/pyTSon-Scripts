@@ -1665,3 +1665,6 @@ class serverTreeDelegate(ts3plugin):
             else:
                 self.installDelegate(schid)
 
+    def onConnectStatusChangeEvent(self, serverConnectionHandlerID, newStatus, errorNumber):
+        if newStatus == ts3defines.ConnectStatus.STATUS_CONNECTION_ESTABLISHED:
+            self.installDelegate(serverConnectionHandlerID)
