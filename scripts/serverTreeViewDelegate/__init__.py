@@ -85,6 +85,24 @@ def getObjectByName(name:str, schid:int=0, isClient=False):
     else:
         return 0
 
+def getSchidOfTab(tabWidget, tabIndex):
+    currentTab = tabWidget.currentIndex
+    if tabIndex >= tabWidget.count or tabIndex < 0:
+        return 0
+    if currentTab != tabIndex:
+        tabWidget.setCurrentIndex(tabIndex)
+    schid = ts3lib.getCurrentServerConnectionHandlerID()
+    if currentTab != tabIndex:
+        tabWidget.setCurrentIndex(currentTab)
+    return schid
+
+def getTabOfSchid(tabWidget, schid):
+    for i in range(tabWidget.count):
+        tabSchid = getSchidOfTab(tabWidget, i)
+        if tabSchid == schid:
+            return tabWidget.widget(i)
+    return None
+
 def getOptions():
     """
     :return: dict(options)
@@ -1618,18 +1636,15 @@ class serverTreeDelegate(ts3plugin):
 
     def installDelegate(self, schid):
         if schid not in self.dlgs or not self.dlgs[schid]:
-            if not self.svmanagerstack: #We need the tabmanager to see which is the current active treeview/tab
+            if not self.svmanagerstack:
                 self.retrieveWidgets()
-            #FIXME: get proper serverview for schid
-            currentServerTree = [item for item in self.svmanagerstack.widget(self.svmanagerstack.currentIndex).children() if item.objectName == "ServerTreeView"][0]
+            tab = getTabOfSchid(self.svmanagerstack, schid)
+            currentServerTree = [item for item in tab.children() if item.objectName == "ServerTreeView"][0]
             self.dlgs[schid] = NewTreeDelegate(schid, currentServerTree)
             currentServerTree.setItemDelegate(self.dlgs[schid])
 
     def uninstallDelegate(self, schid):
         if schid in self.dlgs and self.dlgs[schid]:
-            if not self.svmanagerstack: #We need the tabmanager to see which is the current active treeview/tab
-                self.retrieveWidgets()
-            #FIXME: get proper serverview for schid
             currentServerTree = self.dlgs[schid].parent()
             oldDelegate = [item for item in currentServerTree.children() if type(item).__name__ == "TreeDelegate"][0]
             if not oldDelegate:
