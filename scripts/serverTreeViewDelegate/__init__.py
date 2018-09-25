@@ -16,6 +16,7 @@ from PythonQt.QtGui import (QApplication, QDialog, QAbstractItemView,
 from PythonQt.QtCore import Qt, QEvent, QTimer, QMimeData, QModelIndex, QByteArray
 from PythonQt.pytson import EventFilterObject
 from PythonQt.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+import pytson
 import pycountry
 
 # Helper Functions
@@ -1113,8 +1114,6 @@ class NewTreeDelegate(QStyledItemDelegate):
         self.channels = {}
         self.clients = {}
 
-        self.oldDelegate = parent.itemDelegate() #FIXME: maybe use pytson.tr("TreeDelegate", ...) instead
-
         self.myid = -1
 
         self.network = network()
@@ -1344,23 +1343,23 @@ class NewTreeDelegate(QStyledItemDelegate):
         if type(obj) is Channel:
             if obj.isDefault:                 
                 ret.append(QIcon(self.iconpack.icon("DEFAULT")))
-                desc.append(self.oldDelegate.tr("Default channel"))
+                desc.append(pytson.tr("TreeDelegate", "Default channel"))
             if obj.isPasswordProtected: 
                 ret.append(QIcon(self.iconpack.icon("REGISTER")))
-                desc.append(self.oldDelegate.tr("Password-protected"))
+                desc.append(pytson.tr("TreeDelegate", "Password-protected"))
             if obj.codec == ts3defines.CodecType.CODEC_OPUS_MUSIC or obj.codec == ts3defines.CodecType.CODEC_CELT_MONO:
                 ret.append(QIcon(self.iconpack.icon("MUSIC")))
-                desc.append(self.oldDelegate.tr("Music codec"))
+                desc.append(pytson.tr("TreeDelegate", "Music codec"))
             if obj.neededTalkPower > 0:
                 ret.append(QIcon(self.iconpack.icon("MODERATED")))
-                desc.append(self.oldDelegate.tr("Moderated"))
+                desc.append(pytson.tr("TreeDelegate", "Moderated"))
             if obj.iconID != 0:
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
-                desc.append(self.oldDelegate.tr("Channel Icon"))
+                desc.append(pytson.tr("TreeDelegate", "Channel Icon"))
         elif type(obj) is Client:
             #TODO: isWhisperTarget
             #ret.append(QIcon(self.iconpack.icon("ON_WHISPERLIST")))
-            #desc.append(self.oldDelegate.tr("On whisperlist"))
+            #desc.append(pytson.tr("TreeDelegate", "On whisperlist"))
             # badges
             overwolf, badges = parseBadges(obj.badges)
             for badgeUuid in badges:
@@ -1389,15 +1388,15 @@ class NewTreeDelegate(QStyledItemDelegate):
             # priority speaker
             if obj.isPrioritySpeaker:
                 ret.append(QIcon(self.iconpack.icon("CAPTURE")))
-                desc.append(self.oldDelegate.tr("Priority speaker"))
+                desc.append(pytson.tr("TreeDelegate", "Priority speaker"))
             # istalker
             parentChannel = Channel(self.schid, obj.channelID)
             if obj.isTalker:
                 ret.append(QIcon(self.iconpack.icon("IS_TALKER")))
-                desc.append(self.oldDelegate.tr("Talk Power granted")) #TODO: check if this is correct
+                desc.append(pytson.tr("TreeDelegate", "Talk Power granted")) #TODO: check if this is correct
             elif obj.talkPower < parentChannel.neededTalkPower:
                 ret.append(QIcon(self.iconpack.icon("INPUT_MUTED")))
-                desc.append(self.oldDelegate.tr("Insufficient Talk power"))
+                desc.append(pytson.tr("TreeDelegate", "Insufficient Talk power"))
             # channelgroup
             if obj.channelGroup in self.cgicons:
                 cgID = self.cgicons[obj.channelGroup]
@@ -1406,7 +1405,7 @@ class NewTreeDelegate(QStyledItemDelegate):
                 else:
                     ret.append(QIcon(self.icons.icon(cgID)))
                 if obj.channelGroup in self.cgnames:
-                    desc.append("{}{}".format(self.cgnames[obj.channelGroup], self.oldDelegate.tr("%1 [Channel Group]")[2:]))
+                    desc.append("{}{}".format(self.cgnames[obj.channelGroup], pytson.tr("TreeDelegate", "%1 [Channel Group]")[2:]))
                 else:
                     desc.append("")
             # servergroups
@@ -1420,21 +1419,21 @@ class NewTreeDelegate(QStyledItemDelegate):
                     else:
                         ret.append(QIcon(self.icons.icon(sgID)))
                     if sg in self.sgnames:
-                        desc.append("{}{}".format(self.sgnames[sg], self.oldDelegate.tr("%1 [Server Group]")[2:]))
+                        desc.append("{}{}".format(self.sgnames[sg], pytson.tr("TreeDelegate", "%1 [Server Group]")[2:]))
                     else:
                         desc.append("")
             # clienticon
             if obj.iconID != 0:
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
-                desc.append(self.oldDelegate.tr("Client Icon"))
+                desc.append(pytson.tr("TreeDelegate", "Client Icon"))
             # talkrequest
             if obj.isRequestingTalkPower:
                 ret.append(QIcon(self.iconpack.icon("REQUEST_TALK_POWER")))
-                desc.append(self.oldDelegate.tr("Talk Power requested"))
+                desc.append(pytson.tr("TreeDelegate", "Talk Power requested"))
             # overwolf
             if self.options["EnableOverwolfIcons"] == "1" and overwolf == 1:
                 ret.append(QIcon(self.overwolfPath))
-                desc.append(self.oldDelegate.tr("Using Overwolf"))
+                desc.append(pytson.tr("TreeDelegate", "Using Overwolf"))
             # flag
             if self.options["EnableCountryFlags"] == "1" and obj.country != "":
                 ret.append(QIcon(self.countries.flag(obj.country)))
@@ -1443,7 +1442,7 @@ class NewTreeDelegate(QStyledItemDelegate):
             assert type(obj) is Server
             if obj.iconID != 0:
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
-                desc.append(self.oldDelegate.tr("Server Icon"))
+                desc.append(pytson.tr("TreeDelegate", "Server Icon"))
         return ret, desc
 
     # external badge stuff
