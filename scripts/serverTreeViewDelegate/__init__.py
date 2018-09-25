@@ -1357,9 +1357,10 @@ class NewTreeDelegate(QStyledItemDelegate):
                 ret.append(QIcon(self.icons.icon(obj.iconID)))
                 desc.append(pytson.tr("TreeDelegate", "Channel Icon"))
         elif type(obj) is Client:
-            #TODO: isWhisperTarget
-            #ret.append(QIcon(self.iconpack.icon("ON_WHISPERLIST")))
-            #desc.append(pytson.tr("TreeDelegate", "On whisperlist"))
+            # isWhisperTarget
+            if ts3lib.isReceivingWhisper(self.schid, obj.clid)[1] == 1:
+                ret.append(QIcon(self.iconpack.icon("ON_WHISPERLIST")))
+                desc.append(pytson.tr("TreeDelegate", "On whisperlist"))
             # badges
             overwolf, badges = parseBadges(obj.badges)
             for badgeUuid in badges:
