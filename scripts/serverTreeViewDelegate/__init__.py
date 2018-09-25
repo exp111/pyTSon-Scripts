@@ -1598,6 +1598,8 @@ class serverTreeDelegate(ts3plugin):
                 dlg.delete()
 
     def onNewServerview(self, obj, ev):
+        if ev.type() != QEvent.ChildAdded:
+            return
         #this will cause to install eventfilters on the trees
         self.retrieveWidgets()
 
@@ -1630,7 +1632,7 @@ class serverTreeDelegate(ts3plugin):
             self.svmanagerstack.installEventFilter(self.svobserver)
             for tree in findAllChildWidgets(self.svmanagerstack, lambda x: "TreeView" in str(type(x)), True):
                 tree.installEventFilter(self.treekeyobserver)
-                if self.autoStart:
+                if self.autoStart and tree.rootIndex().isValid():
                     if type(tree.itemDelegate()).__name__ == "TreeDelegate":
                         self.installDelegate(getSchidOfTab(self.svmanagerstack, self.svmanagerstack.indexOf(tree.parent())))
         else:
