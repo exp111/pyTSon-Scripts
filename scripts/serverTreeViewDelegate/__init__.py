@@ -1630,6 +1630,9 @@ class serverTreeDelegate(ts3plugin):
             self.svmanagerstack.installEventFilter(self.svobserver)
             for tree in findAllChildWidgets(self.svmanagerstack, lambda x: "TreeView" in str(type(x)), True):
                 tree.installEventFilter(self.treekeyobserver)
+                if self.autoStart:
+                    if type(tree.itemDelegate()).__name__ == "TreeDelegate":
+                        self.installDelegate(getSchidOfTab(self.svmanagerstack, self.svmanagerstack.indexOf(tree.parent())))
         else:
             QTimer.singleShot(300, self.retrieveWidgets)
 
