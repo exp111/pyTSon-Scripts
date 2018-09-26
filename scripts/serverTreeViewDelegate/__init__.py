@@ -703,6 +703,7 @@ class Client(object):
         self.parentNode = None
         self._isTalking = False
         self._isWhispering = False
+        self._channelID = 0
 
         self.update()
 
@@ -1111,8 +1112,8 @@ class Client(object):
     
     @property
     def channelID(self):
-        if "channelID" in self.cache:
-            return self.cache["channelID"]
+        if self._channelID:
+            return self._channelID
 
         err, chid = ts3lib.getChannelOfClient(self.schid, self.clid)
 
@@ -1120,8 +1121,12 @@ class Client(object):
             _errprint("Error getting client channel id", err, self.schid, self.clid)
             return "ERROR_GETTING_CHANNELID: {}".format(err)
         else:
-            self.cache["channelID"] = chid
+            self._channelID = chid
             return chid
+
+    @channelID.setter
+    def channelID(self, newID):
+        self._channelID = newID
         
 # Helpers End
 
@@ -1531,6 +1536,27 @@ class NewTreeDelegate(QStyledItemDelegate):
             self.cgicons[channelGroupID] = iconID
         self.cgnames[channelGroupID] = name
 
+    def onClientMoveEvent(self, schid, clientID, oldChannelID, newChannelID, visibility, moveMessage): #TODO: check if client leaves server -> delete obj
+        if schid != self.schid:
+            return
+        
+        if clientID in self.clients and self.clients[clientID]:
+            self.clients[clientID].channelID = newChannelID
+
+    def onClientMoveMovedEvent(self, schid, clientID, oldChannelID, newChannelID, visibility, moverID, moverName, moverUniqueIdentifier, moveMessage):
+        if schid != self.schid:
+            return
+        
+        if clientID in self.clients and self.clients[clientID]:
+            self.clients[clientID].channelID = newChannelID
+
+    def onClientKickFromChannelEvent(self, schid, clientID, oldChannelID, newChannelID, visibility, kickerID, kickerName, kickerUniqueIdentifier, kickMessage):
+        if schid != self.schid:
+            return
+        
+        if clientID in self.clients and self.clients[clientID]:
+            self.clients[clientID].channelID = newChannelID
+    #TODO: check if client gets kicked/banned -> delete client obj
 
 def findChildWidget(widget, checkfunc, recursive):
     for c in widget.children():
