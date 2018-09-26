@@ -1344,7 +1344,7 @@ class NewTreeDelegate(QStyledItemDelegate):
             nextx = 17
             if statusicons:
                 selectedD = ""
-                for ico, desc in reversed(statusicons):
+                for ico, desc in reversed(statusicons): #FIXME: what if the icon doesn't get render? #FIXME: maybe get icon under cursor somehow?
                     start = option.rect.right() - nextx
                     dif = event.x() - start
                     isSelected = dif > 0 and dif < 18
@@ -1359,6 +1359,10 @@ class NewTreeDelegate(QStyledItemDelegate):
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
     def statusIcons(self, obj):
+        """
+        :param: obj: client/channel/server object
+        :return: tuple array (icon, description)
+        """
         ret = []
         if type(obj) is Channel:
             if obj.isDefault:                 
