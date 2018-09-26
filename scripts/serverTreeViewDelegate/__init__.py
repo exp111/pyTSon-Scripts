@@ -1204,7 +1204,7 @@ class NewTreeDelegate(QStyledItemDelegate):
     def _reload(self):
         err, self.myid = ts3lib.getClientID(self.schid)
 
-        err = ts3lib.requestServerGroupList(self.schid)
+        err = ts3lib.requestServerGroupList(self.schid) #FIXME: check if we have permission to get all group; else use requestServerGroupsByClientID on all clients & onServerGroupByClientIDEvent
         if err != ts3defines.ERROR_ok:
             _errprint("Error requesting servergrouplist", err, self.schid)
         err = ts3lib.requestChannelGroupList(self.schid)
@@ -1344,7 +1344,7 @@ class NewTreeDelegate(QStyledItemDelegate):
             nextx = 17
             if statusicons:
                 selectedD = ""
-                for ico, desc in reversed(statusicons): #FIXME: what if the icon doesn't get render? #FIXME: maybe get icon under cursor somehow?
+                for ico, desc in reversed(statusicons): #FIXME: what if the icon doesn't get rendered? #FIXME: maybe get icon under cursor somehow?
                     start = option.rect.right() - nextx
                     dif = event.x() - start
                     isSelected = dif > 0 and dif < 18
