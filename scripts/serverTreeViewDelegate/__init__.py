@@ -1260,7 +1260,7 @@ class NewTreeDelegate(QStyledItemDelegate):
             font = index.data(Qt.FontRole)
             brush = index.data(Qt.TextColorRole)
             if obj:
-                statusicons, desc = self.statusIcons(obj)
+                statusicons = self.statusIcons(obj)
                 if type(obj) is Channel and obj.isSpacer:
                     self._paintSpacer(painter, option, index, obj)
                     return
@@ -1289,7 +1289,7 @@ class NewTreeDelegate(QStyledItemDelegate):
 
             nextx = 17
             if statusicons:
-                for ico in reversed(statusicons): #FIXME: check here if icon exists else don't draw
+                for ico, desc in reversed(statusicons): #FIXME: check here if icon exists else don't draw
                     ico.paint(painter, option.rect.right() - nextx,
                                 option.rect.center().y() - iconsize.height() / 2 + 1, iconsize.width(), iconsize.height())
                     nextx += 18
@@ -1339,51 +1339,42 @@ class NewTreeDelegate(QStyledItemDelegate):
                 return False
 
             obj = self.getObjectByIndex(index)
-            statusicons, desc = self.statusIcons(obj)
+            statusicons = self.statusIcons(obj)
 
             nextx = 17
             if statusicons:
-                i = len(statusicons)
-                selectedIndex = -1
-                for ico in reversed(statusicons):
-                    i -= 1
+                selectedD = ""
+                for ico, desc in reversed(statusicons):
                     start = option.rect.right() - nextx
                     dif = event.x() - start
                     isSelected = dif > 0 and dif < 18
                     if isSelected:
-                        selectedIndex = i
+                        selectedD = desc
                         break
                     nextx += 18
-                if selectedIndex > -1 and len(desc) > selectedIndex:
-                    QToolTip.showText(event.globalPos(), desc[i])
+                if selectedD:
+                    QToolTip.showText(event.globalPos(), selectedD)
                     return True
             return False
         except: from traceback import format_exc;ts3lib.logMessage(format_exc(), ts3defines.LogLevel.LogLevel_ERROR, "pyTSon", 0)
 
     def statusIcons(self, obj):
         ret = []
-        desc = []
         if type(obj) is Channel:
             if obj.isDefault:                 
-                ret.append(QIcon(self.iconpack.icon("DEFAULT")))
-                desc.append(pytson.tr("TreeDelegate", "Default channel"))
+                ret.append((QIcon(self.iconpack.icon("DEFAULT")), pytson.tr("TreeDelegate", "Default channel")))
             if obj.isPasswordProtected: 
-                ret.append(QIcon(self.iconpack.icon("REGISTER")))
-                desc.append(pytson.tr("TreeDelegate", "Password-protected"))
+                ret.append((QIcon(self.iconpack.icon("REGISTER")), pytson.tr("TreeDelegate", "Password-protected")))
             if obj.codec == ts3defines.CodecType.CODEC_OPUS_MUSIC or obj.codec == ts3defines.CodecType.CODEC_CELT_MONO:
-                ret.append(QIcon(self.iconpack.icon("MUSIC")))
-                desc.append(pytson.tr("TreeDelegate", "Music codec"))
+                ret.append((QIcon(self.iconpack.icon("MUSIC")), pytson.tr("TreeDelegate", "Music codec")))
             if obj.neededTalkPower > 0:
-                ret.append(QIcon(self.iconpack.icon("MODERATED")))
-                desc.append(pytson.tr("TreeDelegate", "Moderated"))
+                ret.append((QIcon(self.iconpack.icon("MODERATED")), pytson.tr("TreeDelegate", "Moderated")))
             if obj.iconID != 0:
-                ret.append(QIcon(self.icons.icon(obj.iconID)))
-                desc.append(pytson.tr("TreeDelegate", "Channel Icon"))
+                ret.append((QIcon(self.icons.icon(obj.iconID)), pytson.tr("TreeDelegate", "Channel Icon")))
         elif type(obj) is Client:
             # isWhisperTarget
             if ts3lib.isReceivingWhisper(self.schid, obj.clid)[1] == 1:
-                ret.append(QIcon(self.iconpack.icon("ON_WHISPERLIST")))
-                desc.append(pytson.tr("TreeDelegate", "On whisperlist"))
+                ret.append((QIcon(self.iconpack.icon("ON_WHISPERLIST")), pytson.tr("TreeDelegate", "On whisperlist")))
             # badges
             overwolf, badges = parseBadges(obj.badges)
             for badgeUuid in badges:
@@ -1396,8 +1387,7 @@ class NewTreeDelegate(QStyledItemDelegate):
                             return
                         self.network.downloadFile("{}.svg".format(badge["url"]), filePath)
                         self.downloadedBadges[badgeUuid] = True
-                    ret.append(QIcon(filePath))
-                    desc.append(badge["description"])
+                    ret.append((QIcon(filePath), badge["description"]))
                 #external badges
                 if badgeUuid in self.externalBadges:
                     badge = self.externalBadges[badgeUuid]
@@ -1407,67 +1397,60 @@ class NewTreeDelegate(QStyledItemDelegate):
                             return
                         self.network.downloadFile("https://raw.githubusercontent.com/R4P3-NET/CustomBadges/master/img/{}".format(badge["filename"]), filePath)
                         self.downloadedBadges[badgeUuid] = True
-                    ret.append(QIcon(filePath))
-                    desc.append(badge["description"])
+                    ret.append((QIcon(filePath), badge["description"]))
             # priority speaker
             if obj.isPrioritySpeaker:
-                ret.append(QIcon(self.iconpack.icon("CAPTURE")))
-                desc.append(pytson.tr("TreeDelegate", "Priority speaker"))
+                ret.append((QIcon(self.iconpack.icon("CAPTURE")), pytson.tr("TreeDelegate", "Priority speaker")))
             # istalker
             parentChannel = Channel(self.schid, obj.channelID)
             if obj.isTalker:
-                ret.append(QIcon(self.iconpack.icon("IS_TALKER")))
-                desc.append(pytson.tr("TreeDelegate", "Talk Power granted")) #TODO: check if this is correct
+                ret.append((QIcon(self.iconpack.icon("IS_TALKER")), pytson.tr("TreeDelegate", "Talk Power granted"))) #TODO: check if this is correct
             elif obj.talkPower < parentChannel.neededTalkPower:
-                ret.append(QIcon(self.iconpack.icon("INPUT_MUTED")))
-                desc.append(pytson.tr("TreeDelegate", "Insufficient Talk power"))
+                ret.append((QIcon(self.iconpack.icon("INPUT_MUTED")), pytson.tr("TreeDelegate", "Insufficient Talk power")))
             # channelgroup
             if obj.channelGroup in self.cgicons:
                 cgID = self.cgicons[obj.channelGroup]
-                if cgID in range(100, 700, 100):
-                    ret.append(QIcon(self.iconpack.icon("group_{}".format(cgID))))
-                else:
-                    ret.append(QIcon(self.icons.icon(cgID)))
+                desc = ""
                 if obj.channelGroup in self.cgnames:
-                    desc.append("{}{}".format(self.cgnames[obj.channelGroup], pytson.tr("TreeDelegate", "%1 [Channel Group]")[2:]))
+                    desc = "{}{}".format(self.cgnames[obj.channelGroup], pytson.tr("TreeDelegate", "%1 [Channel Group]")[2:])
+
+                if cgID in range(100, 700, 100):
+                    ret.append((QIcon(self.iconpack.icon("group_{}".format(cgID))), desc))
                 else:
-                    desc.append("")
+                    ret.append((QIcon(self.icons.icon(cgID)), desc))
+                
             # servergroups
             for sg in obj.serverGroups:
                 if sg in self.sgicons:
                     sgID = self.sgicons[sg]
                     if sgID == 0:
                         continue
-                    elif sgID in range(100, 700, 100):
-                        ret.append(QIcon(self.iconpack.icon("group_{}".format(sgID))))
-                    else:
-                        ret.append(QIcon(self.icons.icon(sgID)))
+
+                    desc = ""
                     if sg in self.sgnames:
-                        desc.append("{}{}".format(self.sgnames[sg], pytson.tr("TreeDelegate", "%1 [Server Group]")[2:]))
+                        desc = "{}{}".format(self.sgnames[sg], pytson.tr("TreeDelegate", "%1 [Server Group]")[2:])
+
+                    if sgID in range(100, 700, 100):
+                        ret.append((QIcon(self.iconpack.icon("group_{}".format(sgID))), desc))
                     else:
-                        desc.append("")
+                        ret.append((QIcon(self.icons.icon(sgID)), desc))
             # clienticon
             if obj.iconID != 0:
-                ret.append(QIcon(self.icons.icon(obj.iconID)))
-                desc.append(pytson.tr("TreeDelegate", "Client Icon"))
+                ret.append((QIcon(self.icons.icon(obj.iconID)), pytson.tr("TreeDelegate", "Client Icon")))
             # talkrequest
             if obj.isRequestingTalkPower:
-                ret.append(QIcon(self.iconpack.icon("REQUEST_TALK_POWER")))
-                desc.append(pytson.tr("TreeDelegate", "Talk Power requested"))
+                ret.append((QIcon(self.iconpack.icon("REQUEST_TALK_POWER")), pytson.tr("TreeDelegate", "Talk Power requested")))
             # overwolf
             if self.options["EnableOverwolfIcons"] == "1" and overwolf == 1:
-                ret.append(QIcon(self.overwolfPath))
-                desc.append(pytson.tr("TreeDelegate", "Using Overwolf"))
+                ret.append((QIcon(self.overwolfPath), pytson.tr("TreeDelegate", "Using Overwolf")))
             # flag
             if self.options["EnableCountryFlags"] == "1" and obj.country != "":
-                ret.append(QIcon(self.countries.flag(obj.country)))
-                desc.append(pycountry.countries.get(alpha_2=obj.country.upper()).name)
+                ret.append((QIcon(self.countries.flag(obj.country)), pycountry.countries.get(alpha_2=obj.country.upper()).name))
         else:
             assert type(obj) is Server
             if obj.iconID != 0:
-                ret.append(QIcon(self.icons.icon(obj.iconID)))
-                desc.append(pytson.tr("TreeDelegate", "Server Icon"))
-        return ret, desc
+                ret.append((QIcon(self.icons.icon(obj.iconID)), pytson.tr("TreeDelegate", "Server Icon")))
+        return ret
 
     # external badge stuff
     def downloadExtBadges(self):
