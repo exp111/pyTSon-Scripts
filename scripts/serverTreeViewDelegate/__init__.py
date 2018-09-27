@@ -1214,6 +1214,15 @@ class NewTreeDelegate(QStyledItemDelegate):
         self.channels = {}
         self.clients = {}
 
+    def onServerPermissionErrorEvent(self, schid, errorMessage, error, returnCode, failedPermissionID):
+        if schid != self.schid:
+            return False
+
+        if returnCode != "NewTreeDelegate":
+            return False
+
+        ts3lib.printMessageToCurrentTab("error: {}, errorMsg: {}, failedPermID: {}".format(error, errorMessage, failedPermissionID))
+
     def _paintSpacer(self, painter, option, index, obj):
         st = obj.spacerType
 
@@ -1473,6 +1482,13 @@ class NewTreeDelegate(QStyledItemDelegate):
             self.externalBadges = load(f)
     
     #ts3 proxy stuff #TODO: add some more callbacks like kick etc
+    def onConnectStatusChangeEvent(self, schid, newStatus, errorNumber):
+        if schid != self.schid:
+            return
+        
+        if newStatus == ts3defines.ConnectStatus.STATUS_CONNECTION_ESTABLISHED: #new Connection -> reload
+            self._reload()
+
     def onUpdateClientEvent(self, schid, clientID, invokerID, invokerName,
                             invokerUniqueIdentifier):
         if schid != self.schid:
@@ -1483,7 +1499,7 @@ class NewTreeDelegate(QStyledItemDelegate):
         client.update()
         newName = client.name
         if oldName != newName:
-            self.clients.pop(oldName)
+            del self.clients[oldName]
             self.clients[newName] = client
 
     def onUpdateChannelEditedEvent(self, schid, cid, invokerID, invokerName,
@@ -1496,7 +1512,7 @@ class NewTreeDelegate(QStyledItemDelegate):
         channel.update()
         newName = channel.name
         if oldName != newName:
-            self.channels.pop(oldName)
+            del self.channels[oldName]
             self.channels[newName] = channel
 
     def onServerGroupListEvent(self, schid, serverGroupID, name, atype, iconID,
@@ -1523,10 +1539,19 @@ class NewTreeDelegate(QStyledItemDelegate):
             self.cgicons[channelGroupID] = iconID
         self.cgnames[channelGroupID] = name
 
-    def onClientMoveEvent(self, schid, clientID, oldChannelID, newChannelID, visibility, moveMessage): #TODO: check if client leaves server -> delete obj
+    def onClientMoveEvent(self, schid, clientID, oldChannelID, newChannelID, visibility, moveMessage):
         if schid != self.schid:
             return
         
+        if not newChannelID: #newChannelID == 0 => disconnected
+            if clientID in self.clients and self.clients[clientID]:
+                obj = self.clients[clientID]
+                for key in self.clients.keys():
+                    if self.clients[key] == obj:
+                        del self.clients[key]
+                del obj
+            return
+
         if clientID in self.clients and self.clients[clientID]:
             self.clients[clientID].channelID = newChannelID
 
