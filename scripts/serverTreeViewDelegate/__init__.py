@@ -1506,7 +1506,8 @@ class NewTreeDelegate(QStyledItemDelegate):
                 ret.append((QIcon(self.overwolfPath), pytson.tr("TreeDelegate", "Using Overwolf")))
             # flag
             if self.options["EnableCountryFlags"] == "1" and obj.country != "":
-                ret.append((QIcon(self.countries.flag(obj.country)), self.countryDict[obj.country.upper()]))
+                if obj.country.upper() in self.countryDict:
+                    ret.append((QIcon(self.countries.flag(obj.country)), self.countryDict[obj.country.upper()]))
         else:
             assert type(obj) is Server
             if obj.iconID != 0:
