@@ -13,7 +13,7 @@ from PythonQt.QtGui import (QApplication, QDialog, QAbstractItemView,
                             QItemSelectionModel, QTextDocument, QWidget, 
                             QInputDialog, QLineEdit, QStyledItemDelegate,
                             QStyle, QFontMetrics, QIcon, QToolTip)
-from PythonQt.QtCore import Qt, QEvent, QTimer, QMimeData, QModelIndex, QByteArray
+from PythonQt.QtCore import Qt, QEvent, QTimer, QMimeData, QModelIndex, QByteArray, QUrl
 from PythonQt.pytson import EventFilterObject
 from PythonQt.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 import pytson
@@ -1502,10 +1502,10 @@ class NewTreeDelegate(QStyledItemDelegate):
             if obj.isRequestingTalkPower:
                 ret.append((QIcon(self.iconpack.icon("REQUEST_TALK_POWER")), pytson.tr("TreeDelegate", "Talk Power requested")))
             # overwolf
-            if self.options["EnableOverwolfIcons"] == "1" and overwolf == 1:
+            if "EnableOverwolfIcons" in self.options and self.options["EnableOverwolfIcons"] == "1" and overwolf == 1:
                 ret.append((QIcon(self.overwolfPath), pytson.tr("TreeDelegate", "Using Overwolf")))
             # flag
-            if self.options["EnableCountryFlags"] == "1" and obj.country != "":
+            if "EnableCountryFlags" in self.options and self.options["EnableCountryFlags"] == "1" and obj.country != "":
                 if obj.country.upper() in self.countryDict:
                     ret.append((QIcon(self.countries.flag(obj.country)), self.countryDict[obj.country.upper()]))
         else:
