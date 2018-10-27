@@ -220,3 +220,6 @@ def stop():
 
 def widgetByName(name):
     return [item for item in self.allWidgets() if item.objectName == name]
+
+def widgetByClassName(name):
+    return [item for item in self.allWidgets() if type(item).__name__ == name]
